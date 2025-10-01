@@ -1,34 +1,29 @@
 // src/screens/SplashScreen.tsx
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ImageBackground } from 'react-native';
+import { View, StyleSheet, Image, ImageBackground } from 'react-native';
 
 const SplashScreen = ({ navigation }: any) => {
   useEffect(() => {
     const timeout = setTimeout(() => {
-      navigation.replace('Login'); // chuyển đến Home sau 2.5s
+      navigation.replace('Login'); // chuyển đến Login sau 2.5s
     }, 2500);
 
-    return () => clearTimeout(timeout); // xóa timeout khi unmount
-  }, []);
+    return () => clearTimeout(timeout); // xoá timeout khi unmount
+  }, [navigation]);
 
   return (
     <ImageBackground
-      source={require('../assets/images/backgroundSplsah.png')}
+      source={require('../assets/backgroundSplsah.png')} // KHÔNG còn images/
       style={styles.background}
       resizeMode="cover"
     >
       <View style={styles.content}>
-
         <Image
-          source={
-            require('../assets/images/logo_shop.png')
-          }
+          source={require('../assets/logo_shop.png')} // KHÔNG còn images/
           style={styles.logo}
         />
-        {/* <Text style={styles.title}>Chào mừng đến với app bán quần áo thể thao!</Text> */}
       </View>
     </ImageBackground>
-
   );
 };
 
@@ -51,12 +46,5 @@ const styles = StyleSheet.create({
     height: 120,
     marginBottom: 20,
     borderRadius: 60,
-  },
-  title: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    paddingHorizontal: 20,
   },
 });

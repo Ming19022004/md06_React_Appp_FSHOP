@@ -20,7 +20,7 @@ export default function RegisterScreen({navigation}:any) {
     }
     return(
         <ImageBackground 
-        source={require('../assets/background.png')}
+        source={require('../assets/backgroundR.png')}
         style={styles.background}
         resizeMode="cover"
         >

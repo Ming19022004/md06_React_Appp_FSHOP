@@ -1,208 +1,92 @@
-import React from "react";
+import React from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    Image,
-    StyleSheet,
-    Switch,
-    Pressable,
-    TouchableOpacity,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ImageBackground,
 } from 'react-native';
- export default function LoginScreen({navigation}:any) {
-   const [rememberMe, setRememberMe] = React.useState(false);
-   const [passwordVisible, setPasswordVidible] = React.useState(false);
 
-   const [agreeTerms, setAgreeeTerms] = React.useState(false);
+const RegisterScreen = () => {
+  return (
+    <ImageBackground
+      source={require('../assets/backgroundR.png')} // ✅ sửa lại đường dẫn ảnh
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        <Text style={styles.title}>Đăng ký</Text>
 
-   const handleDK = () => {
-    navigation.navigate('Register');
-   }
-
-   return(
-    <View style={styles.container}>
-
-        <Image
-        source={require('../assets/banner1.png')}
-        style={styles.image}
-        resizeMode="cover"
+        <TextInput style={styles.input} placeholder="Tên đăng nhập" />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Mật khẩu"
+          secureTextEntry
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Xác nhận mật khẩu"
+          secureTextEntry
         />
 
-        <View style={styles.formContainer}>
-            <Text style={styles.title}>Dang Nhap</Text>
+        <TouchableOpacity style={styles.button}>
+          <Text style={styles.buttonText}>Đăng ký</Text>
+        </TouchableOpacity>
+      </View>
+    </ImageBackground>
+  );
+};
 
-            <View style={styles.inputContainer}>
-                <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#aaa"
-                />
-            </View>
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  container: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#333',
+  },
+  input: {
+    height: 45,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 15,
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
+  },
+  button: {
+    backgroundColor: '#2e86de',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    textAlign: 'center',
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+});
 
-            <View style={styles.inputContainer}>
-                <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#aaa"
-                secureTextEntry={!passwordVisible}
-                />
-
-                <TouchableOpacity onPress={() => setPasswordVidible(!passwordVisible)}>
-
-                </TouchableOpacity>
-            </View>
-
-            <View style={styles.checkboxContainer}>
-                <Pressable onPress={()=>setRememberMe (!rememberMe)} style={styles.checkbox}>
-                    <View style={[styles.checkboxBox, rememberMe && styles.checkboxChecked]}/>
-                    <Text>Nho tai khoan</Text>
-                </Pressable>
-            </View>
-
-            <TouchableOpacity style={styles.loginButton}>
-                <Text style={styles.loginText}>Dang nhap</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.fogotText}>Quen mat khau?</Text>
-
-             <View style={styles.dividerContainer}>
-                    <View style={styles.line} />
-                    <Text style={styles.orText}>Đăng nhập bằng</Text>
-                    <View style={styles.line} />
-                </View>
-
-                <View style={styles.socialContainer}>
-                    <TouchableOpacity >
-                        <Image style={styles.faceB}
-                            source={require(`../assets/faceb.jpg`)} />
-                    </TouchableOpacity>
-                    <TouchableOpacity >
-                        <Image
-                            style={styles.googleIcon}
-                            source={require(`../assets/gg1.png`)}
-                        />
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={styles.signupText}>
-                    Bạn không có tài khoản?{' '}
-                    <Text style={{ color: '#ff6600', fontWeight: 'bold' }} onPress={handleDK} >tạo tài khoản</Text>
-                </Text>
-            </View>
-
-    </View>
-   );
- }
- const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    image: {
-        width: '100%',
-        height:350,
-    },
-    formContainer: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#fff',
-        marginTop: 30,
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
-        elevation: 5,
-    },
-     title: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        alignSelf: 'center',
-        marginBottom: 20
-    },
-    input: {
-        flex:1,
-        height: 45,
-        color: '#333',
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        marginBottom: 15,
-        borderRadius: 10,
-        paddingHorizontal: 10,
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    checkbox: {
-        flexDirection: 'row',
-        alignItems:'center',
-    },
-    checkboxBox: {
-        width: 20,
-        height: 20,
-        borderWidth:1,
-        backgroundColor:'#666',
-        borderRadius:4,
-        marginRight: 8,
-        borderBlockColor:'#fff',
-    },
-    checkboxChecked: {
-        backgroundColor: '#ff6600',
-    },
-    loginButton: {
-        backgroundColor: '#0000',
-        paddingVertical: 12,
-        borderRadius: 10,
-        alignItems:'center',
-        marginBottom: 10,
-    },
-    loginText: {
-        backgroundColor: '#fff',
-        fontSize: 18,
-    },
-    fogotText: {
-        textAlign: 'center',
-        color: '#666',
-        fontSize: 16,
-        marginBottom: 20,
-    },
-    dividerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15
-    },
-    line: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#ddd'
-    },
-    orText: {
-        marginHorizontal: 10,
-        color: '#888',
-        fontSize: 13
-    },
-    socialContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 20,
-        marginBottom: 20
-    },
-    faceB: {
-        width: 45,
-        height: 43,
-        resizeMode: 'cover'
-    },
-    googleIcon: {
-        width: 40,
-        height: 40,
-        // resizeMode: 'contain'
-    },
-    signupText: {
-        textAlign: 'center',
-        fontSize: 14,
-        color: '#555'
-    },
-    });
+export default RegisterScreen;
