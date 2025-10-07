@@ -1,0 +1,7 @@
+{
+  "products": [
+    { "id": 1, "name": "Áo Thun Nam", "price": 150000 },
+    { "id": 2, "name": "Quần Jean Nữ", "price": 250000},
+    { "id": 3, "name": "Giày Thể Thao", "price": 500000}
+  ]
+}
