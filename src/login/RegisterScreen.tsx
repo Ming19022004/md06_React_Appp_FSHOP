@@ -8,16 +8,54 @@ import {
     TouchableOpacity,
     Image,
     Pressable,
+    Alert
 }from 'react-native';
 import { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
+import API from "../api";
 
 export default function RegisterScreen({navigation}:any) {
-    const [agreeTerms, setAgreeeTerms]=useState(false);
+    const [agreeTerms, setAgreeTerms]=useState(false);
 
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const handleRegister = async () => {
+        if (!username || !email || !password || !confirmPassword) {
+            Alert.alert('Lỗi','Vui lòng điền đầy đủ thông tin');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Lỗi','Mật khẩu xác nhận không khớp');
+            return;
+        }
+        if (!agreeTerms) {
+            Alert.alert('Lỗi','Vui lòng đồng ý với điều khoản dịch vụ');
+            return;
+        }
+        try {
+            const response = await API.post('/register', {
+                name: username,
+                email,
+                password,
+            });
+            Alert.alert('Thành công',response.data.message, [
+            {
+                text: 'Đăng nhập',
+                onPress: () => navigation.navigate('Login'),                
+            },
+            ]);
+        } catch (error) {
+            const message = 'Đăng ký thất bại';
+            Alert.alert('Lỗi', message);
+        }
+        };
     const LoginScreen = () => {
         navigation.navigate('Login');
     }
+
     return(
         <ImageBackground 
         source={require('../assets/images/backgroundR.png')}
@@ -30,9 +68,11 @@ export default function RegisterScreen({navigation}:any) {
 
                 <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Ten tai khoan"
+                    placeholder="Tên tài khoản"
                     placeholderTextColor={"#aaa"}
                     style={styles.input}
+                    value={username}
+                    onChangeText={setUsername}
                     />
                 </View>
 
@@ -43,6 +83,8 @@ export default function RegisterScreen({navigation}:any) {
                     placeholderTextColor={"#aaa"}
                     style={styles.input}
                     keyboardType="email-address"
+                    value={email}
+                    onChangeText={setEmail}
                     />
                 </View>
 
@@ -53,6 +95,8 @@ export default function RegisterScreen({navigation}:any) {
                     placeholderTextColor={"#aaa"}
                     style={styles.input}
                     secureTextEntry
+                    value={password}
+                    onChangeText={setPassword}
                     />
                 </View>
 
@@ -63,11 +107,13 @@ export default function RegisterScreen({navigation}:any) {
                     placeholderTextColor={"#aaa"}
                     style={styles.input}
                     secureTextEntry
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
                     />
                 </View>
 
                 <View style={styles.checkboxContainer}>
-                    <Pressable onPress={()=>setAgreeeTerms(!agreeTerms)} style={styles.checkbox}>
+                    <Pressable onPress={()=>setAgreeTerms(!agreeTerms)} style={styles.checkbox}>
                         <View style={[styles.checkboxBox, agreeTerms && styles.checkboxChecked]}/>
                         <Text style={styles.checkboxText}>Tôi đồng ý</Text>
                         <Text style={styles.checkboxText1}> với điều khoản dịch vụ</Text>
@@ -76,7 +122,8 @@ export default function RegisterScreen({navigation}:any) {
             </View>
 
             <View style={styles.loginButton}>
-                <TouchableOpacity style={styles.loginButton1}>
+                <TouchableOpacity style={styles.loginButton1}
+                onPress={handleRegister}>
                     <Text style={styles.loginText}>Đăng ký</Text>
                 </TouchableOpacity>
             </View>
