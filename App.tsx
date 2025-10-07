@@ -8,20 +8,22 @@ import HomeScreen from "./src/screen/HomeScreen";
 import SearchScreen from "./src/screen/SearchScreen";
 import FavoritesScreen from "./src/screen/FavoriteScreen";
 import AccountScreen from "./src/screen/AccountScreen";
+import TabNavigator from "./src/TabNavigatior/TabNavigatior";
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home" screenOptions= {{ headerShown: false }} >
-        {/* <Stack.Screen name="Splash" component={SplashScreen} />
+      {/* <Stack.Navigator initialRouteName="Home" screenOptions= {{ headerShown: false }} >
+        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} /> */}
+        <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="Favorites" component={FavoritesScreen} />
         <Stack.Screen name="Account" component={AccountScreen} />
-      </Stack.Navigator>
+      </Stack.Navigator> */}
+      <TabNavigator/>
     </NavigationContainer>
   );
 }

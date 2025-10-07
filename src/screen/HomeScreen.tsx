@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useState } from 'react';
 
 const { width } = Dimensions.get('window');
@@ -28,7 +28,7 @@ const HomeScreen = ({ navigation }: any) => {
   ];
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(event.nativeEvent.contentOffset.x / width);
     setActiveIndex(index);
   };
