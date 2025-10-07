@@ -12,14 +12,14 @@ const SplashScreen = ({ navigation }: any) => {
 
         return (
             <ImageBackground
-                source = {require('../assets/images/backgroundSplsah.png')}
+                source = {require('../assets/images/backgroundSports2.jpg')}
                 style = {styles.background}
                 resizeMode = "cover"
                 >
                 <View style = {styles.content}>
                     <Image
                         source = {
-                                require('../assets/images/logo_shop.png')
+                                require('../assets/images/logo_shop.jpg')
                             }
                         style = {styles.logo}
                     />
