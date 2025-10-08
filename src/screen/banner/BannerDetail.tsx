@@ -53,11 +53,14 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 20
     },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center'
-    }
-
+//     title: {
+//         fontSize: 20,
+//         fontWeight: 'bold',
+//         textAlign: 'center'
+//     }
+      title:{
+          fontSize:20,
+          fontWeight:'bold',
+          textAlign:'center',}
 
 });
