@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,158 +6,358 @@ import {
   Image,
   Dimensions,
   FlatList,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
+
+import ProductCard from "./productCard/ProductCard";
+import SaleProductCard from "./productCard/SaleProductCard";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import API from "../api";
+import { fetchAllProducts } from "../services/ProductServices";
+import { fetchSaleProducts } from "../services/SaleProduct";
+import { fetchBanners } from "../services/BannerServices";
+import { fetchCategories } from "../services/CategoryServices";
 
 const { width } = Dimensions.get("window");
 
-const HomeScreen = () => {
-  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+// Layout constants
+const HORIZONTAL_PADDING = 12;
+const GRID_GAP = 12;
+const CARD_WIDTH = (width - HORIZONTAL_PADDING * 2 - GRID_GAP) / 2;
 
-  // Banner local
-  const banners = [
-    { id: '1', image: require('../assets/images/bannerc1.png') },
-    { id: '2', image: require('../assets/images/bannerc2.png') },
-    { id: '3', image: require('../assets/images/bannerc3.png') },
-  ];
+const HomeScreen = ({ navigation }: any) => {
+  const scrollRef = useRef<ScrollView>(null);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [saleProducts, setSaleProducts] = useState<any[]>([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Danh mục sản phẩm
-  const categories = [
-    { id: 1, name: "Chelsea", image: require('../assets/images/chelsea.png') },
-    { id: 2, name: "Japan", image: require('../assets/images/japan.png') },
-    { id: 3, name: "PSG", image: require('../assets/images/psg.png') },
-    { id: 4, name: "Arsenal", image: require('../assets/images/arsenal.png') },
-    { id: 5, name: "Chelsea", image: require('../assets/images/chelsea.png') },
-    { id: 6, name: "Japan", image: require('../assets/images/japan.png') },
-    { id: 7, name: "PSG", image: require('../assets/images/psg.png') },
-    { id: 8, name: "Arsenal", image: require('../assets/images/arsenal.png') },
-  ];
+  useEffect(() => {
+    loadAllData();
+  }, []);
 
-  const handleBannerScroll = (event: any) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / width);
-    setActiveBannerIndex(index);
+  const loadAllData = async () => {
+    try {
+      const [bannerData, categoryData, productData, saleProductData] =
+        await Promise.all([
+          fetchBanners(),
+          fetchCategories(),
+          fetchAllProducts(),
+          fetchSaleProducts(),
+        ]);
+
+      setBanners(bannerData);
+      setCategories(categoryData);
+      setProducts(productData);
+      setSaleProducts(saleProductData);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
+    }
   };
 
+  const handleBannerPress = (banner: any) => {
+    navigation.navigate("BannerDT", { banner });
+  };
+
+  useEffect(() => {
+    if (banners.length === 0) return;
+
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => {
+        const nextIndex = (prev + 1) % banners.length;
+        scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+        return nextIndex;
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [banners]);
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    setActiveIndex(idx);
+  };
+
+  const Section = ({ title, onSeeMore, children }: any) => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {onSeeMore && (
+          <TouchableOpacity onPress={onSeeMore}>
+            <Text style={styles.seeMore}>Xem thêm...</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {children}
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>FShop</Text>
+      <TouchableOpacity style={styles.header}>
+        <Text style={styles.text}>Sports Shop</Text>
+      </TouchableOpacity>
+
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.searchBox}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate("Search")}
+        >
+          <Text style={{ fontSize: 18, marginHorizontal: 10 }}>🔍</Text>
+          <Text style={styles.input}>Tìm kiếm ở đây</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("Cart")}
+        >
+          <View style={{ position: "relative" }}>
+            <Text style={{ fontSize: 22, color: "#0f766e" }}>🛒</Text>
+            {cartCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{cartCount}</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("Chat")}
+        >
+          <Text style={{ fontSize: 22 }}>💬</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate("Notification")}
+        >
+          <View style={{ position: "relative" }}>
+            <Text style={{ fontSize: 22 }}>🔔</Text>
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
       </View>
 
-      {/* Top Bar: Search + Giỏ hàng + Chat */}
-      <View style={styles.topBar}>
-        <View style={styles.searchBox}>
-          <Text style={{ marginHorizontal: 10 }}>🔍</Text>
-          <TextInput
-            placeholder="Tìm kiếm ở đây"
-            placeholderTextColor="#999"
-            style={styles.input}
+      {/* Body */}
+      <ScrollView
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ backgroundColor: "#EEEEEE" }}
+      >
+        {/* Banners */}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          style={styles.bannerWrapper}
+        >
+          {banners.map((b, index) => (
+            <TouchableOpacity
+              key={b.id || `banner-${index}`}
+              activeOpacity={0.8}
+              onPress={() => handleBannerPress(b)}
+            >
+              <View style={styles.bannerContainer}>
+                <Image source={{ uri: b.banner }} style={styles.bannerImage} />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.dotsContainer}>
+          {banners.map((b, i) => (
+            <View
+              key={b.id || `dot-${i}`}
+              style={[styles.dot, i === activeIndex && styles.activeDot]}
+            />
+          ))}
+        </View>
+
+        {/* Danh mục */}
+        <Section title="Danh mục">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
+          >
+            <View style={styles.categoryRow}>
+              {categories.map((cat, index) => (
+                <TouchableOpacity
+                  key={cat.code || `cat-${index}`}
+                  style={styles.categoryItem}
+                  onPress={() =>
+                    navigation.navigate("Category", {
+                      code: cat.code,
+                      title: cat.name,
+                    })
+                  }
+                >
+                  <Image
+                    source={{ uri: cat.image }}
+                    style={styles.categoryImage}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </Section>
+
+        {/* Khuyến mãi */}
+        <View>
+          <FlatList
+            data={saleProducts.slice(0, 4)}
+            keyExtractor={(item, index) => item._id || `sale-${index}`}
+            numColumns={2}
+            columnWrapperStyle={{ justifyContent: "space-between" }}
+            contentContainerStyle={{
+              paddingHorizontal: HORIZONTAL_PADDING,
+              paddingTop: 4,
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.gridItem}>
+                <SaleProductCard item={item} navigation={navigation} />
+              </View>
+            )}
+            scrollEnabled={false}
           />
         </View>
 
-        <TouchableOpacity style={styles.iconButton}>
-          <Text>🛒</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.iconButton}>
-          <Text>💬</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Banner */}
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleBannerScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={{ paddingHorizontal: 10, marginTop: 10 }}
-      >
-        {banners.map((banner) => (
-          <Image
-            key={banner.id}
-            source={banner.image}
-            style={[styles.bannerImage, { marginHorizontal: 5, borderRadius: 10 }]}
+        {/* Tất cả sản phẩm */}
+        <Section title="Tất cả sản phẩm">
+          <FlatList
+            data={products}
+            keyExtractor={(item, index) => item._id || `product-${index}`}
+            numColumns={2}
+            columnWrapperStyle={{ justifyContent: "space-between" }}
+            contentContainerStyle={{
+              paddingHorizontal: HORIZONTAL_PADDING,
+              marginBottom: 60,
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.gridItem}>
+                <ProductCard item={item} navigation={navigation} />
+              </View>
+            )}
+            scrollEnabled={false}
           />
-        ))}
+        </Section>
       </ScrollView>
-
-      {/* Dots indicator */}
-      <View style={styles.dotsContainer}>
-        {banners.map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, { backgroundColor: i === activeBannerIndex ? "#000" : "#ccc" }]}
-          />
-        ))}
-      </View>
-
-      {/* Danh mục sản phẩm */}
-      <Text style={styles.sectionTitle}>Danh mục sản phẩm</Text>
-      <FlatList
-        data={categories}
-        keyExtractor={(item) => item.id.toString()}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingLeft: 10 }}
-        renderItem={({ item }) => (
-          <View style={styles.categoryCard}>
-            <Image source={item.image} style={styles.categoryImage} />
-            <Text style={styles.categoryName}>{item.name}</Text>
-          </View>
-        )}
-      />
-    </ScrollView>
+    </View>
   );
 };
 
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
-
-  // Header
-  header: {
-    backgroundColor: "orange",
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  headerText: { fontSize: 23, fontWeight: "bold", color: "#fff" },
-
-  // Top bar
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 10,
-    marginTop: 10,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  header: { backgroundColor: "#0f766e", padding: 10, alignItems: "center" },
+  text: { fontSize: 23, fontWeight: "bold", color: "#fff" },
+  topBar: { flexDirection: "row", margin: 10, alignItems: "center" },
   searchBox: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 19,
-    borderColor: "black",
     borderWidth: 1,
     paddingHorizontal: 10,
     height: 40,
-    backgroundColor: "#fff",
+    borderColor: "#ccc",
   },
-  input: { flex: 1, fontSize: 14, color: "#000", paddingVertical: 0 },
+  input: { flex: 1, fontSize: 14 },
   iconButton: { marginLeft: 10, padding: 6 },
-
-  // Banner
-  bannerImage: { width: width - 20, height: 180, resizeMode: "cover" },
-  dotsContainer: { flexDirection: "row", justifyContent: "center", marginTop: 5 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 4 },
-
-  // Section title
-  sectionTitle: { fontSize: 20, fontWeight: "bold", margin: 10 },
-
-  // Category
-  categoryCard: { width: 100, marginRight: 10, alignItems: "center" },
-  categoryImage: { width: 80, height: 80, borderRadius: 8 },
-  categoryName: { marginTop: 5, fontSize: 14, textAlign: "center" },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    backgroundColor: "red",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { color: "white", fontSize: 10, fontWeight: "bold" },
+  bannerWrapper: {
+    height: width * 0.56,
+    marginTop: 5,
+  },
+  bannerContainer: {
+    width: width - 20,
+    height: width * 0.5,
+    marginHorizontal: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  bannerImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  dotsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginVertical: 10,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ccc",
+    marginHorizontal: 4,
+  },
+  activeDot: { backgroundColor: "#000" },
+  section: { marginVertical: 10 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: HORIZONTAL_PADDING,
+    marginBottom: 5,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginBottom: 5,
+    margin: 20,
+  },
+  seeMore: { color: "orange", marginLeft: 15, marginTop: 5 },
+  gridItem: {
+    width: CARD_WIDTH,
+    marginBottom: GRID_GAP,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  categoryItem: {
+    backgroundColor: "#eee",
+    borderRadius: 50,
+    width: 90,
+    height: 90,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    margin: 10,
+  },
+  categoryImage: {
+    width: "100%",
+    height: "100%",
+  },
 });
