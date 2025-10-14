@@ -1,0 +1,21 @@
+[33mea190bb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mApp_Screen[m[33m, [m[1;31morigin/App_Screen[m[33m)[m Cập nhật App.tsx và thêm ProductDetailScreen
+[33mf9a7b33[m banner 3s chuyển ảnh
+[33m6d7411e[m Merge branch 'App_Screen' of https://github.com/Ming19022004/md06_React_Appp_FSHOP into App_Screen
+[33m5ec9233[m banner auto 3s đổi ảnh
+[33m235b522[m banner auto 3s đổi ảnh
+[33me6c32f0[m Call API màn Home
+[33m067530e[m edit logic & call api register
+[33mb1d145d[m hiển thị sp
+[33ma210993[m Merge remote-tracking branch 'origin/App_Screen' into App_Screen
+[33m33978f6[m thay logo + background màn splashscreen
+[33mb8d0389[m Danh mục SP fix cứng
+[33m60a3d5e[m TabNavigtion
+[33mc7a9810[m fix lỗi signin google thất bại
+[33m19207a6[m Giao Diện màn Home
+[33mef083a3[m code api, gg signin, facebook signin,lấy gg service
+[33m2f898ab[m sửa giao diện login
+[33m89417c7[m fix lỗi chạy app
+[33mee37658[m Edit man dang ky
+[33mecf0799[m update APP.tsx
+[33m22aa388[m new Login
+[33me6c0c36[m Initial commit

@@ -1,1 +1,1 @@
-declare module 'react-native-vector-icons/Icons';
+declare module 'react-native-vector-icons/Ionicons';
