@@ -44,18 +44,19 @@ const HomeScreen = ({ navigation }: any) => {
 
   const loadAllData = async () => {
     try {
-      const [bannerData, categoryData, productData, saleProductData] =
+      const [categoryData, productData] =
         await Promise.all([
-          fetchBanners(),
+//           fetchBanners(),
           fetchCategories(),
           fetchAllProducts(),
-          fetchSaleProducts(),
+//           fetchSaleProducts(),
         ]);
 
-      setBanners(bannerData);
+      setBanners([]);
       setCategories(categoryData);
       setProducts(productData);
-      setSaleProducts(saleProductData);
+      setSaleProducts([]);
+      console.log("📦 Kết quả API sản phẩm:", productData);
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
     }
@@ -157,7 +158,9 @@ const HomeScreen = ({ navigation }: any) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ backgroundColor: "#EEEEEE" }}
       >
+
         {/* Banners */}
+              {/*
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -188,7 +191,7 @@ const HomeScreen = ({ navigation }: any) => {
             />
           ))}
         </View>
-
+        */}
         {/* Danh mục */}
         <Section title="Danh mục">
           <ScrollView
@@ -219,6 +222,7 @@ const HomeScreen = ({ navigation }: any) => {
         </Section>
 
         {/* Khuyến mãi */}
+        {/*
         <View>
           <FlatList
             data={saleProducts.slice(0, 4)}
@@ -237,7 +241,7 @@ const HomeScreen = ({ navigation }: any) => {
             scrollEnabled={false}
           />
         </View>
-
+    */}
         {/* Tất cả sản phẩm */}
         <Section title="Tất cả sản phẩm">
           <FlatList
