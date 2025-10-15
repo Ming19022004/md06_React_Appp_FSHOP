@@ -33,7 +33,7 @@ const ProductCard = ({ item, navigation }: any) => {
             <Animated.View style= {[styles.card, {transform: [{scale}]}]}>
             {/*Ảnh sản phẩm */}
             <View style={styles.imageWrapper}>
-                <Image source={{ uri: item.image?.[0] }} style={styles.image}/>
+                <Image source={{ uri: item.images?.[0] }} style={styles.image}/>
             </View>
              {/* Tên sản phẩm */}
              <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">

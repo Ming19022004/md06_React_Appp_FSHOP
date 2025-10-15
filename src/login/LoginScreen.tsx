@@ -28,16 +28,17 @@ export default function LoginScreen({ navigation }: any) {
             Alert.alert('Lỗi', 'Vui lòng nhập email và mật khẩu');
             return;
         }
+
         try {
             const res = await API.post('/login', { email, password });
             const { user } = res.data;
-
 
             await AsyncStorage.setItem('userId', user.id);
             await AsyncStorage.setItem('userEmail', user.email);
             await AsyncStorage.setItem('userName', user.name);
 
-            navigation.navigate('Home');
+            // ✅ Sửa từ 'Home' -> 'MainTab'
+            navigation.replace('MainTab');
         } catch (err: any) {
             const message = err.response?.data?.message || 'Đăng nhập thất bại';
             Alert.alert('Lỗi', message);
@@ -49,16 +50,12 @@ export default function LoginScreen({ navigation }: any) {
             console.log("Bắt đầu đăng nhập Google...");
 
             const firebaseUser = await _signInWithGoogle();
-
-
             if (!firebaseUser) {
-
                 console.log("Đăng nhập Google thất bại hoặc bị người dùng hủy.");
                 return;
             }
 
             console.log("Lấy thông tin từ Firebase thành công:", firebaseUser);
-
 
             const res = await API.post('/auth/google', {
                 uid: firebaseUser.id,
@@ -67,22 +64,20 @@ export default function LoginScreen({ navigation }: any) {
                 photo: firebaseUser.photo,
             });
 
-
             const backendUser = res.data.user;
 
             await AsyncStorage.setItem('userId', backendUser.id);
             await AsyncStorage.setItem('userEmail', backendUser.email);
             await AsyncStorage.setItem('userName', backendUser.name);
 
-            navigation.navigate("Home");
+            // ✅ Chuyển hướng đúng tab
+            navigation.replace('MainTab');
 
         } catch (error: any) {
-
             console.error("Lỗi khi đồng bộ tài khoản Google với backend:", error.response?.data || error.message);
             Alert.alert("Lỗi máy chủ", "Không thể đồng bộ tài khoản Google với hệ thống. Vui lòng thử lại.");
         }
     }
-
 
     const handleFacebookLogin = async () => {
         try {
@@ -93,7 +88,6 @@ export default function LoginScreen({ navigation }: any) {
             console.log('Email: ', user.email);
             console.log('DisplayName:', user.displayName);
 
-
             const res = await API.post('/auth/facebook', {
                 uid: user.uid,
                 email: user.email,
@@ -102,12 +96,13 @@ export default function LoginScreen({ navigation }: any) {
 
             const backendUser = res.data.user;
 
-
             await AsyncStorage.setItem('userId', backendUser.id);
             await AsyncStorage.setItem('userEmail', backendUser.email || '');
             await AsyncStorage.setItem('userName', backendUser.name || '');
 
-            navigation.navigate('Home');
+            // ✅ Sửa navigate -> replace
+            navigation.replace('MainTab');
+
         } catch (err) {
             console.error('Facebook login error', err);
             Alert.alert('Lỗi', 'Lỗi đăng nhập bằng Facebook');
@@ -123,6 +118,8 @@ export default function LoginScreen({ navigation }: any) {
             />
             <View style={styles.formContainer}>
                 <Text style={styles.title}>Đăng nhập</Text>
+
+                {/* Nhập Email */}
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
@@ -135,6 +132,7 @@ export default function LoginScreen({ navigation }: any) {
                     />
                 </View>
 
+                {/* Nhập Mật khẩu */}
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
@@ -145,40 +143,42 @@ export default function LoginScreen({ navigation }: any) {
                         onChangeText={setPassword}
                     />
                     <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)}>
-
+                        {/* có thể thêm icon con mắt sau này */}
                     </TouchableOpacity>
                 </View>
+
+                {/* Ghi nhớ tài khoản */}
                 <View style={styles.checkboxContainer}>
                     <Pressable onPress={() => setRememberMe(!rememberMe)} style={styles.checkbox}>
                         <View style={[styles.checkboxBox, rememberMe && styles.checkboxChecked]} />
                         <Text style={styles.checkboxText}>Nhớ tài khoản</Text>
                     </Pressable>
                 </View>
+
+                {/* Nút Đăng nhập */}
                 <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
                     <Text style={styles.loginText}>Đăng nhập</Text>
                 </TouchableOpacity>
 
                 <Text style={styles.forgotText} onPress={handleForgot}>Quên mật khẩu?</Text>
+
+                {/* Đăng nhập bằng mạng xã hội */}
                 <View style={styles.dividerContainer}>
                     <View style={styles.line} />
                     <Text style={styles.orText}>Đăng nhập bằng</Text>
                     <View style={styles.line} />
                 </View>
+
                 <View style={styles.socialContainer}>
                     <TouchableOpacity onPress={handleFacebookLogin}>
-                        <Image
-                            style={styles.faceB}
-                            source={require(`../assets/images/logo_fb.png`)}
-                        />
+                        <Image style={styles.faceB} source={require('../assets/images/logo_fb.png')} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={googleSignIn}>
-                        <Image
-                            style={styles.googleIcon}
-                            source={require(`../assets/images/logo_gg.png`)}
-                        />
+                        <Image style={styles.googleIcon} source={require('../assets/images/logo_gg.png')} />
                     </TouchableOpacity>
                 </View>
 
+                {/* Tạo tài khoản */}
                 <Text style={styles.signupText}>
                     Bạn không có tài khoản?{' '}
                     <Text style={{ color: '#ff6600', fontWeight: 'bold' }} onPress={handleDK}>
@@ -249,5 +249,4 @@ const styles = StyleSheet.create({
     checkboxChecked: { backgroundColor: '#ff6600', borderColor: '#ff6600' },
     checkboxText: { fontSize: 11, color: '#333' },
     checkbox: { flexDirection: 'row', alignItems: 'center' }
-
 });
