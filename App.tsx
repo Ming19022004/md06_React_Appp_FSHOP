@@ -26,7 +26,7 @@ export default function App() {
         <Stack.Screen name="MainTab" component={TabNavigator} />
         <Stack.Screen name="BannerDT" component={BannerDetail} />
         <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
-        <Stack.Screen name="Category" component={LogoMoreScreen}/>
+        <Stack.Screen name="Category" component={LogoMoreScreen}/> {/*sp danh muc*/}
       </Stack.Navigator>
     </NavigationContainer>
   );
