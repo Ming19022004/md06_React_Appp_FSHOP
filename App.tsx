@@ -8,6 +8,7 @@ import SplashScreen from "./src/screen/SplashScreen";
 import BannerDetail from "./src/screen/banner/BannerDetail";
 import TabNavigator from "./src/TabNavigatior/TabNavigatior";
 import ProductDetailScreen from "./src/screen/ProductDetailScreen";
+import LogoMoreScreen from "./src/screen/seemore/LogoMoreScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -23,8 +24,9 @@ export default function App() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         {/* ✅ Đây là tab chứa Home, Search, Account, Favorites */}
         <Stack.Screen name="MainTab" component={TabNavigator} />
-        <Stack.Screen name="Banner" component={BannerDetail} />
-       <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
+        <Stack.Screen name="BannerDT" component={BannerDetail} />
+        <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
+        <Stack.Screen name="Category" component={LogoMoreScreen}/>
       </Stack.Navigator>
     </NavigationContainer>
   );
