@@ -1,4 +1,4 @@
-import Reactm, { useRef } from "react";
+import React, { useRef } from "react";
 import {
     Text,
     Image,
@@ -17,32 +17,36 @@ const ProductCard = ({ item, navigation }: any) => {
             useNativeDriver: true,
         }).start();
     };
+
     const handlePressOut = () => {
         Animated.spring(scale, {
             toValue: 1,
             useNativeDriver: true,
         }).start();
     };
+
     return (
         <Pressable
-            onPress={() => navigation.navigate("ProductDetails", {productId: item._id })}
+            onPress={() => navigation.navigate("ProductDT", { productId: item._id })}
             onPressIn={handlePressIn}
-            onPressOut = {handlePressOut}
-            style= {{ flex: 1 }}
+            onPressOut={handlePressOut}
+            style={{ flex: 1 }}
         >
-            <Animated.View style= {[styles.card, {transform: [{scale}]}]}>
-            {/*Ảnh sản phẩm */}
-            <View style={styles.imageWrapper}>
-                <Image source={{ uri: item.images?.[0] }} style={styles.image}/>
-            </View>
-             {/* Tên sản phẩm */}
-             <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">
-                {item.name}
-             </Text>
-                {/* Giá sản phẩm */}
+            <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
+                {/* Ảnh sản phẩm */}
+                <View style={styles.imageWrapper}>
+                    <Image source={{ uri: item.images?.[0] || "" }} style={styles.image} />
+                </View>
+
+                {/* Tên sản phẩm */}
+                <Text style={styles.name} numberOfLines={2} ellipsizeMode="tail">
+                    {item.name}
+                </Text>
+
+                {/* Giá và số lượng đã bán */}
                 <View style={styles.priceContainer}>
                     <Text style={styles.price}>
-                        {item.price.toLocaleString()} đ
+                        {item.price?.toLocaleString() || 0} đ
                     </Text>
 
                     <Text style={styles.sold}>
@@ -53,9 +57,10 @@ const ProductCard = ({ item, navigation }: any) => {
         </Pressable>
     );
 };
+
 const styles = StyleSheet.create({
     card: {
-        width: "100%", //chiếm toàn bộ gridItem
+        width: "100%",
         backgroundColor: "#fff",
         borderRadius: 8,
         overflow: "hidden",
@@ -67,9 +72,9 @@ const styles = StyleSheet.create({
     image: {
         width: "100%",
         height: 230,
-        resizeMode: "cover",// ảnh phủ hết
+        resizeMode: "cover",
     },
-    name:{
+    name: {
         fontSize: 13,
         color: '#333',
         marginHorizontal: 6,
@@ -79,19 +84,20 @@ const styles = StyleSheet.create({
     priceContainer: {
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between", //chia 2 bên
+        justifyContent: "space-between",
         marginHorizontal: 6,
         marginBottom: 8,
         marginTop: 6,
     },
-    price : {
-        color:'#d0011b',
+    price: {
+        color: '#d0011b',
         fontWeight: "bold",
         fontSize: 14,
     },
-    sold : {
+    sold: {
         fontSize: 12,
         color: "#666",
     },
 });
+
 export default ProductCard;
