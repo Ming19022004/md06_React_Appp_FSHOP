@@ -25,7 +25,7 @@ const SaleProductCard = ({ item, navigation }: any) => {
     };
     return (
         <Pressable
-            onPress={() => navigation.navigate("ProductDetails", {productId: item._id })}
+            onPress={() => navigation.navigate("ProductDT", {productId: item._id })}
             onPressIn={handlePressIn}
             onPressOut = {handlePressOut}
             style= {{ flex: 1 }}
@@ -34,7 +34,7 @@ const SaleProductCard = ({ item, navigation }: any) => {
             {/*Ảnh sản phẩm */}
             <View style={styles.imageWrapper}>
                 <Image
-                    source={{ uri: item.image?.[0] }}
+                    source={{ uri: item.images?.[0] }}
                     style={styles.image}
                 />
             {/* Badge sản phẩm */}

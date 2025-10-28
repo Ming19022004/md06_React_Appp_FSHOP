@@ -1,53 +1,96 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
-import { useState } from "react";
+import MCI from 'react-native-vector-icons/MaterialCommunityIcons'
+import { useNavigation } from '@react-navigation/native'
+import AsyncStorge from '@react-native-async-storge/async-storge'
+import { GoogleSignIn } from '@react-native-google-signin/google-signin'
+import { LoginManager } from 'react-native-fbsdk-next'
+import API from '../api'
 
-const { width } = Dimensions.get('window');
 
-const AccountScreen = ({ navigation }: any) => {
 
-    const [selected, setSelected] = useState('home');
+export default function AccountScreen(){
+     const nav = useNavigation()
+      const [show, setShow] = React.useState(false)
+      const [isIn, setIn] = React.useState(false)
+      React.useEffect(()=>{
+        (async()=>{
+          const id = await AsyncStorage.getItem('userId')
+          setIn(!!id)
+        })()
+        const unsub = nav.addListener('focus', async()=>{
+          const id = await AsyncStorage.getItem('userId')
+          setIn(!!id)
+        })
+        return unsub
+      },[nav])
 
-    const handlePress = (screen: 'home' | 'search' | 'heart' | 'user') => {
-        setSelected(screen);
-        if (screen === 'home') {
-            navigation.navigate('Home');
-        } else if (screen === 'search') {
-            navigation.navigate('Search');
-        } else if (screen === 'heart') {
-            navigation.navigate('Favorites');
-        } else if (screen === 'user') {
-            navigation.navigate('Account');
-        }
-    };
+      const out=async()=>{
+        try{
+          GoogleSignin.configure({webClientId:'985098184266-s3mp7f1q7t899ef5g3eu2huh3ocarusj.apps.googleusercontent.com'})
+          const u=await GoogleSignin.getCurrentUser()
+          if(u){await GoogleSignin.revokeAccess();await GoogleSignin.signOut()}
+          await LoginManager.logOut()
+          await AsyncStorage.clear()
+          Alert.alert('OK','Đã đăng xuất')
+          nav.reset({index:0,routes:[{name:'Login'}]})
+        }catch(e){Alert.alert('Lỗi','Không thể đăng xuất')}
+      }
 
-    return (
-        <View style={styles.container}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Text style={styles.backText}>Back</Text> {/* Thay thế icon bằng text */}
-                <Text style={styles.title1}>Màn Account</Text>
+      const menus=[
+        ['cart-outline','Giỏ hàng','Cart'],
+        ['truck-check-outline','Theo dõi đơn hàng','OrderTracking'],
+        ['account-outline','Thông tin cá nhân','PersonalInfo'],
+        ['chat-outline','Trò chuyện','Chat'],
+        ['shield-lock-outline','Chính sách và bảo mật','PrivacyPolicy'],
+      ]
+
+      return(
+        <View style={{flex:1,padding:15,backgroundColor:'#fff'}}>
+          <Text style={{textAlign:'center',fontSize:22,fontWeight:'700',marginBottom:12,backgroundColor:'orange',padding:8,borderRadius:8}}>F7 Shop</Text>
+
+          {menus.map((m,i)=>(
+            <TouchableOpacity key={i} style={s.row} onPress={()=>nav.navigate(m[2])}>
+              <MCI name={m[0]} size={22}/>
+              <Text style={s.txt}>{m[1]}</Text>
             </TouchableOpacity>
+          ))}
 
-            {/* Bottom Nav */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity onPress={() => handlePress('home')}>
-                    <Text style={selected === 'home' ? styles.selectedText : styles.unselectedText}>Home</Text>
+          {isIn?
+            <TouchableOpacity style={s.row} onPress={()=>setShow(true)}>
+              <MCI name='logout' size={22} color='red'/>
+              <Text style={[s.txt,{color:'red'}]}>Đăng xuất</Text>
+            </TouchableOpacity>
+          :
+            <>
+              <TouchableOpacity style={s.row} onPress={()=>nav.navigate('Login')}>
+                <MCI name='login' size={22} color='blue'/>
+                <Text style={[s.txt,{color:'blue'}]}>Đăng nhập</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.row} onPress={()=>nav.navigate('Register')}>
+                <MCI name='account-plus' size={22} color='green'/>
+                <Text style={[s.txt,{color:'green'}]}>Đăng ký</Text>
+              </TouchableOpacity>
+            </>
+          }
+
+          {show && (
+            <View style={{marginTop:20,padding:10,backgroundColor:'#eee',borderRadius:10}}>
+              <Text style={{textAlign:'center',marginBottom:10}}>Bạn có chắc muốn đăng xuất?</Text>
+              <View style={{flexDirection:'row',justifyContent:'space-around'}}>
+                <TouchableOpacity style={{backgroundColor:'red',padding:8,borderRadius:8}} onPress={out}>
+                  <Text style={{color:'#fff'}}>Có</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('search')}>
-                    <Text style={selected === 'search' ? styles.selectedText : styles.unselectedText}>Search</Text>
+                <TouchableOpacity style={{backgroundColor:'green',padding:8,borderRadius:8}} onPress={()=>setShow(false)}>
+                  <Text style={{color:'#fff'}}>Không</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('heart')}>
-                    <Text style={selected === 'heart' ? styles.selectedText : styles.unselectedText}>Favorites</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('user')}>
-                    <Text style={selected === 'user' ? styles.selectedText : styles.unselectedText}>Account</Text>
-                </TouchableOpacity>
+              </View>
             </View>
+          )}
         </View>
-    );
-};
+      )
+    }
 
-export default AccountScreen;
 
 const styles = StyleSheet.create({
     container: {
