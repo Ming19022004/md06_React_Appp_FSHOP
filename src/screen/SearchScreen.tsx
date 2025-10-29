@@ -19,7 +19,7 @@ const SearchScreen = ({ navigation }: any) => {
         } else if (screen === 'user') {
             navigation.navigate('Account');
         }
-    };
+    };  
 
     return (
         <View style={styles.container}>

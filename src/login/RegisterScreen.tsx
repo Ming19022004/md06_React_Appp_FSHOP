@@ -9,13 +9,13 @@ import {
     Image,
     Pressable,
     Alert
-}from 'react-native';
+} from 'react-native';
 import { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import API from "../api";
 
-export default function RegisterScreen({navigation}:any) {
-    const [agreeTerms, setAgreeTerms]=useState(false);
+export default function RegisterScreen({ navigation }: any) {
+    const [agreeTerms, setAgreeTerms] = useState(false);
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -24,15 +24,15 @@ export default function RegisterScreen({navigation}:any) {
 
     const handleRegister = async () => {
         if (!username || !email || !password || !confirmPassword) {
-            Alert.alert('Lỗi','Vui lòng điền đầy đủ thông tin');
+            Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
             return;
         }
         if (password !== confirmPassword) {
-            Alert.alert('Lỗi','Mật khẩu xác nhận không khớp');
+            Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
             return;
         }
         if (!agreeTerms) {
-            Alert.alert('Lỗi','Vui lòng đồng ý với điều khoản dịch vụ');
+            Alert.alert('Lỗi', 'Vui lòng đồng ý với điều khoản dịch vụ');
             return;
         }
         try {
@@ -41,114 +41,119 @@ export default function RegisterScreen({navigation}:any) {
                 email,
                 password,
             });
-            Alert.alert('Thành công',response.data.message, [
-            {
-                text: 'Đăng nhập',
-                onPress: () => navigation.navigate('Login'),                
-            },
+            Alert.alert('Thành công', response.data.message, [
+                {
+                    text: 'Đăng nhập',
+                    onPress: () => navigation.navigate('Login'),
+                },
             ]);
         } catch (error) {
             const message = 'Đăng ký thất bại';
             Alert.alert('Lỗi', message);
         }
-        };
+    };
     const LoginScreen = () => {
         navigation.navigate('Login');
     }
 
-    return(
-        <ImageBackground 
-        source={require('../assets/images/backgroundR.png')}
-        style={styles.background}
-        resizeMode="cover"
+    return (
+        <ImageBackground
+            source={require('../assets/images/backgroundR.png')}
+            style={styles.background}
+            resizeMode="cover"
         >
             <View style={styles.container}>
                 <Text>Dang ky</Text>
-                
+
 
                 <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Tên tài khoản"
-                    placeholderTextColor={"#aaa"}
-                    style={styles.input}
-                    value={username}
-                    onChangeText={setUsername}
+                        placeholder="Tên tài khoản"
+                        placeholderTextColor={"#aaa"}
+                        style={styles.input}
+                        value={username}
+                        onChangeText={setUsername}
                     />
                 </View>
 
 
                 <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Email"
-                    placeholderTextColor={"#aaa"}
-                    style={styles.input}
-                    keyboardType="email-address"
-                    value={email}
-                    onChangeText={setEmail}
+                        placeholder="Email"
+                        placeholderTextColor={"#aaa"}
+                        style={styles.input}
+                        keyboardType="email-address"
+                        value={email}
+                        onChangeText={setEmail}
                     />
                 </View>
 
 
                 <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Mat khau"
-                    placeholderTextColor={"#aaa"}
-                    style={styles.input}
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
+                        placeholder="Mat khau"
+                        placeholderTextColor={"#aaa"}
+                        style={styles.input}
+                        secureTextEntry
+                        value={password}
+                        onChangeText={setPassword}
                     />
                 </View>
 
 
-                 <View style={styles.inputContainer}>
+                <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Xac nhan mat khau"
-                    placeholderTextColor={"#aaa"}
-                    style={styles.input}
-                    secureTextEntry
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                        placeholder="Xac nhan mat khau"
+                        placeholderTextColor={"#aaa"}
+                        style={styles.input}
+                        secureTextEntry
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
                     />
                 </View>
 
                 <View style={styles.checkboxContainer}>
-                    <Pressable onPress={()=>setAgreeTerms(!agreeTerms)} style={styles.checkbox}>
-                        <View style={[styles.checkboxBox, agreeTerms && styles.checkboxChecked]}/>
+                    <Pressable onPress={() => setAgreeTerms(!agreeTerms)} style={styles.checkbox}>
+                        <View style={[styles.checkboxBox, agreeTerms && styles.checkboxChecked]} />
                         <Text style={styles.checkboxText}>Tôi đồng ý</Text>
                         <Text style={styles.checkboxText1}> với điều khoản dịch vụ</Text>
-                    </Pressable> 
+                    </Pressable>
                 </View>
             </View>
 
             <View style={styles.loginButton}>
                 <TouchableOpacity style={styles.loginButton1}
-                onPress={handleRegister}>
+                    onPress={handleRegister}>
                     <Text style={styles.loginText}>Đăng ký</Text>
                 </TouchableOpacity>
             </View>
 
 
             <View style={styles.dividerContainer}>
-                <View style={styles.line}/>
+                <View style={styles.line} />
                 <Text style={styles.orText}>Đăng ký bằng</Text>
-                <View style ={styles.line}/>
+                <View style={styles.line} />
             </View>
             <View style={styles.socialContainer}>
                 <TouchableOpacity >
-                   <Image style={styles.faceB}
-                   source={require(`../assets/images/faceb.jpg`)}/>
+                    <Image style={styles.faceB}
+                        source={require(`../assets/images/faceb.jpg`)} />
                 </TouchableOpacity>
                 <TouchableOpacity >
-                   <Image
-                   style={styles.googleIcon}
-                   source={require(`../assets/images/gg1.png`)}/>
+                    <Image
+                        style={styles.googleIcon}
+                        source={require(`../assets/images/gg1.png`)} />
                 </TouchableOpacity>
             </View>
 
             <Text style={styles.signupText}>
-                Tôi đã có tài khoản {' '}
-               <Text style={{ color: '#ff6600', fontWeight: 'bold' }} onPress={LoginScreen} >Đăng nhập</Text>
+                Tôi đã có tài khoản
+                <Text
+                    style={{ color: '#ff6600', fontWeight: 'bold' }}
+                    onPress={() => navigation.navigate('Login')}
+                >
+                    {' '}Đăng nhập
+                </Text>
             </Text>
         </ImageBackground>
     );

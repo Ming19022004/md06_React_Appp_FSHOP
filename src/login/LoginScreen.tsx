@@ -180,11 +180,15 @@ export default function LoginScreen({ navigation }: any) {
 
                 {/* Tạo tài khoản */}
                 <Text style={styles.signupText}>
-                    Bạn không có tài khoản?{' '}
-                    <Text style={{ color: '#ff6600', fontWeight: 'bold' }} onPress={handleDK}>
-                        tạo tài khoản
+                    Bạn không có tài khoản?
+                    <Text
+                        style={{ color: '#ff6600', fontWeight: 'bold' }}
+                        onPress={handleDK}
+                    >
+                        {' '}Tạo tài khoản
                     </Text>
                 </Text>
+
             </View>
         </View>
     );

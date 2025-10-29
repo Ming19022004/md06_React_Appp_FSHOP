@@ -7,6 +7,7 @@ import RegisterScreen from "./src/login/RegisterScreen";
 import SplashScreen from "./src/screen/SplashScreen";
 import BannerDetail from "./src/screen/banner/BannerDetail";
 import TabNavigator from "./src/TabNavigatior/TabNavigatior";
+import CartScreen from "./src/screen/CartScreen"; 
 import ProductDetailScreen from "./src/screen/ProductDetailScreen";
 import LogoMoreScreen from "./src/screen/seemore/LogoMoreScreen";
 
@@ -22,11 +23,13 @@ export default function App() {
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
-        {/* ✅ Đây là tab chứa Home, Search, Account, Favorites */}
+      
+
         <Stack.Screen name="MainTab" component={TabNavigator} />
         <Stack.Screen name="BannerDT" component={BannerDetail} />
         <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
-        <Stack.Screen name="Category" component={LogoMoreScreen}/> {/*sp danh muc*/}
+        <Stack.Screen name="Category" component={LogoMoreScreen}/> 
+        <Stack.Screen name="Cart" component={CartScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

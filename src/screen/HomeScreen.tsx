@@ -13,17 +13,12 @@ import {
 } from "react-native";
 
 import ProductCard from "./productCard/ProductCard";
-import SaleProductCard from "./productCard/SaleProductCard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "../api";
 import { fetchAllProducts } from "../services/ProductServices";
-import { fetchSaleProducts } from "../services/SaleProduct";
 import { fetchBanners } from "../services/BannerServices";
 import { fetchCategories } from "../services/CategoryServices";
 
 const { width } = Dimensions.get("window");
-
-// Layout constants
 const HORIZONTAL_PADDING = 12;
 const GRID_GAP = 12;
 const CARD_WIDTH = (width - HORIZONTAL_PADDING * 2 - GRID_GAP) / 2;
@@ -33,7 +28,6 @@ const HomeScreen = ({ navigation }: any) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [saleProducts, setSaleProducts] = useState<any[]>([]);
   const [cartCount, setCartCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -44,21 +38,17 @@ const HomeScreen = ({ navigation }: any) => {
 
   const loadAllData = async () => {
     try {
-      const [categoryData, productData] =
-        await Promise.all([
-//           fetchBanners(),
-          fetchCategories(),
-          fetchAllProducts(),
-//           fetchSaleProducts(),
-        ]);
-
-      setBanners([]);
-      setCategories(categoryData);
-      setProducts(productData);
-      setSaleProducts([]);
-      console.log("📦 Kết quả API sản phẩm:", productData);
+      const [bannerData, categoryData, productData] = await Promise.all([
+        fetchBanners(),
+        fetchCategories(),
+        fetchAllProducts(),
+      ]);
+      setBanners(bannerData || []);
+      setCategories(categoryData || []);
+      setProducts(productData || []);
+      console.log("📦 API sản phẩm:", productData?.length);
     } catch (error) {
-      console.error("Lỗi khi tải dữ liệu:", error);
+      console.error("❌ Lỗi khi tải dữ liệu:", error);
     }
   };
 
@@ -67,16 +57,14 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   useEffect(() => {
-    if (banners.length === 0) return;
-
+    if (!banners || banners.length === 0) return;
     const interval = setInterval(() => {
       setActiveIndex((prev) => {
-        const nextIndex = (prev + 1) % banners.length;
-        scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
-        return nextIndex;
+        const next = (prev + 1) % banners.length;
+        scrollRef.current?.scrollTo({ x: next * width, animated: true });
+        return next;
       });
     }, 3000);
-
     return () => clearInterval(interval);
   }, [banners]);
 
@@ -102,15 +90,14 @@ const HomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <TouchableOpacity style={styles.header}>
+      <View style={styles.header}>
         <Text style={styles.text}>Sports Shop</Text>
-      </TouchableOpacity>
+      </View>
 
       {/* Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.searchBox}
-          activeOpacity={0.8}
           onPress={() => navigation.navigate("Search")}
         >
           <Text style={{ fontSize: 18, marginHorizontal: 10 }}>🔍</Text>
@@ -121,7 +108,7 @@ const HomeScreen = ({ navigation }: any) => {
           style={styles.iconButton}
           onPress={() => navigation.navigate("Cart")}
         >
-          <View style={{ position: "relative" }}>
+          <View>
             <Text style={{ fontSize: 22, color: "#0f766e" }}>🛒</Text>
             {cartCount > 0 && (
               <View style={styles.badge}>
@@ -142,7 +129,7 @@ const HomeScreen = ({ navigation }: any) => {
           style={styles.iconButton}
           onPress={() => navigation.navigate("Notification")}
         >
-          <View style={{ position: "relative" }}>
+          <View>
             <Text style={{ fontSize: 22 }}>🔔</Text>
             {unreadCount > 0 && (
               <View style={styles.badge}>
@@ -158,9 +145,7 @@ const HomeScreen = ({ navigation }: any) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ backgroundColor: "#EEEEEE" }}
       >
-
         {/* Banners */}
-              {/*
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -170,9 +155,9 @@ const HomeScreen = ({ navigation }: any) => {
           scrollEventThrottle={16}
           style={styles.bannerWrapper}
         >
-          {banners.map((b, index) => (
+          {banners.map((b, i) => (
             <TouchableOpacity
-              key={b.id || `banner-${index}`}
+              key={b.id || `banner-${i}`}
               activeOpacity={0.8}
               onPress={() => handleBannerPress(b)}
             >
@@ -191,7 +176,7 @@ const HomeScreen = ({ navigation }: any) => {
             />
           ))}
         </View>
-        */}
+
         {/* Danh mục */}
         <Section title="Danh mục">
           <ScrollView
@@ -221,27 +206,6 @@ const HomeScreen = ({ navigation }: any) => {
           </ScrollView>
         </Section>
 
-        {/* Khuyến mãi */}
-        {/*
-        <View>
-          <FlatList
-            data={saleProducts.slice(0, 4)}
-            keyExtractor={(item, index) => item._id || `sale-${index}`}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: "space-between" }}
-            contentContainerStyle={{
-              paddingHorizontal: HORIZONTAL_PADDING,
-              paddingTop: 4,
-            }}
-            renderItem={({ item }) => (
-              <View style={styles.gridItem}>
-                <SaleProductCard item={item} navigation={navigation} />
-              </View>
-            )}
-            scrollEnabled={false}
-          />
-        </View>
-    */}
         {/* Tất cả sản phẩm */}
         <Section title="Tất cả sản phẩm">
           <FlatList
@@ -297,22 +261,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   badgeText: { color: "white", fontSize: 10, fontWeight: "bold" },
-  bannerWrapper: {
-    height: width * 0.56,
-    marginTop: 5,
-  },
+  bannerWrapper: { height: width * 0.56, marginTop: 5 },
   bannerContainer: {
-    width: width - 20,
+    width,
     height: width * 0.5,
-    marginHorizontal: 10,
-    borderRadius: 12,
-    overflow: "hidden",
   },
-  bannerImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
+  bannerImage: { width: "100%", height: "100%", resizeMode: "cover" },
   dotsContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -339,17 +293,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 5,
-    margin: 20,
   },
-  seeMore: { color: "orange", marginLeft: 15, marginTop: 5 },
+  seeMore: { color: "orange" },
   gridItem: {
     width: CARD_WIDTH,
     marginBottom: GRID_GAP,
   },
-  categoryRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  categoryRow: { flexDirection: "row", gap: 10 },
   categoryItem: {
     backgroundColor: "#eee",
     borderRadius: 50,
@@ -360,8 +310,5 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     margin: 10,
   },
-  categoryImage: {
-    width: "100%",
-    height: "100%",
-  },
+  categoryImage: { width: "100%", height: "100%" },
 });

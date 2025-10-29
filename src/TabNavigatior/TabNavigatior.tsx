@@ -7,6 +7,7 @@ import SearchScreen from "../screen/SearchScreen";
 import AccountScreen from "../screen/AccountScreen";
 import FavoritesScreen from "../screen/FavoriteScreen";
 
+
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
