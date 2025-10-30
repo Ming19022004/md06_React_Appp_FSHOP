@@ -1,85 +1,177 @@
-import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import API from '../api'; // axios instance đã cấu hình sẵn
 
-const CartScreen = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: '1',
-      name: 'Áo thun nam Coolmate Basic',
-      price: 250000,
-      quantity: 1,
-      image: { uri: 'https://via.placeholder.com/100' },
-    },
-    {
-      id: '2',
-      name: 'Áo polo nam Coolmate Classic',
-      price: 350000,
-      quantity: 1,
-      image: { uri: 'https://via.placeholder.com/100' },
-    },
-    {
-      id: '3',
-      name: 'Quần jeans nam Coolmate Slim',
-      price: 450000,
-      quantity: 1,
-      image: { uri: 'https://via.placeholder.com/100' },
-    },
-    {
-      id: '4',
-      name: 'Quần short nam Coolmate Summer',
-      price: 300000,
-      quantity: 1,
-      image: { uri: 'https://via.placeholder.com/100' },
-    },
-    {
-      id: '5',
-      name: 'Áo khoác nam Coolmate Hoodie',
-      price: 550000,
-      quantity: 1,
-      image: { uri: 'https://via.placeholder.com/100' },
-    },
-  ]);
+const PRIMARY = '#0f766e';
+const ORANGE = '#f97316';
 
-  const updateQuantity = (id, delta) => {
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
+export default function CartScreen() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Lấy giỏ hàng từ API
+  useEffect(() => {
+    const loadCart = async () => {
+      try {
+        setLoading(true);
+        const id = await AsyncStorage.getItem('userId');
+        if (id) {
+          setUserId(id);
+          await fetchCart(id);
+        }
+      } catch (err) {
+        console.error('❌ Lỗi load cart:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCart();
+  }, []);
+
+  // Gọi API lấy giỏ hàng
+  const fetchCart = async (id: string) => {
+    try {
+      const res = await API.get(`/carts/${id}`);
+      const items = res.data?.data?.items || [];
+      setCartItems(items);
+    } catch (err) {
+      console.error('❌ Lỗi khi lấy giỏ hàng:', err);
+      setCartItems([]);
+    }
+  };
+
+  // Cập nhật số lượng
+  const updateQuantity = async (productId: string, size: string, quantity: number) => {
+    try {
+      if (!userId) return;
+      if (quantity < 1) {
+        Alert.alert('Xác nhận', 'Xóa sản phẩm này khỏi giỏ?', [
+          { text: 'Hủy', style: 'cancel' },
+          {
+            text: 'Xóa',
+            onPress: async () => {
+              await API.delete(`/carts/${userId}/item`, {
+                params: { product_id: productId, size },
+              });
+              await fetchCart(userId);
+            },
+          },
+        ]);
+        return;
+      }
+
+      await API.put(`/carts/${userId}/item`, { product_id: productId, size, quantity });
+      await fetchCart(userId);
+    } catch (err) {
+      console.error('❌ Lỗi cập nhật số lượng:', err);
+    }
+  };
+
+  // Tính tổng tiền
+  const calculateTotal = () => {
+    return cartItems.reduce((sum, item) => {
+      const product = item.product_id;
+      const price = product?.discount_price ?? product?.price ?? 0;
+      return sum + price * (item.quantity || 1);
+    }, 0);
+  };
+
+  const renderItem = ({ item }: any) => {
+    const product = item.product_id;
+    const price = product?.discount_price ?? product?.price ?? 0;
+
+    return (
+      <View style={styles.itemContainer}>
+        <Image
+          source={{ uri: product?.image || 'https://via.placeholder.com/100' }}
+          style={styles.image}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{product?.name || 'Sản phẩm'}</Text>
+          <Text style={styles.price}>{price.toLocaleString()} đ</Text>
+          <View style={styles.quantityRow}>
+            <TouchableOpacity
+              onPress={() => updateQuantity(product._id, item.size, item.quantity - 1)}
+            >
+              <Ionicons name="remove-circle-outline" size={22} color="gray" />
+            </TouchableOpacity>
+            <Text style={{ marginHorizontal: 10 }}>{item.quantity}</Text>
+            <TouchableOpacity
+              onPress={() => updateQuantity(product._id, item.size, item.quantity + 1)}
+            >
+              <Ionicons name="add-circle-outline" size={22} color="gray" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
     );
   };
 
-  const renderItem = ({ item }) => (
-    <View style={{ flexDirection: 'row', padding: 10, alignItems: 'center' }}>
-      <Image source={item.image} style={{ width: 60, height: 60, marginRight: 10 }} />
-      <View style={{ flex: 1 }}>
-        <Text>{item.name}</Text>
-        <Text style={{ color: 'orange' }}>{item.price.toLocaleString()}đ</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
-          <TouchableOpacity onPress={() => updateQuantity(item.id, -1)}>
-            <Ionicons name="remove-circle-outline" size={20} color="gray" />
-          </TouchableOpacity>
-          <Text style={{ marginHorizontal: 10 }}>{item.quantity}</Text>
-          <TouchableOpacity onPress={() => updateQuantity(item.id, 1)}>
-            <Ionicons name="add-circle-outline" size={20} color="gray" />
-          </TouchableOpacity>
-        </View>
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={PRIMARY} />
       </View>
-    </View>
-  );
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <FlatList
-        data={cartItems}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ padding: 10 }}
-      />
+    <View style={styles.container}>
+      {cartItems.length === 0 ? (
+        <Text style={styles.empty}>Giỏ hàng trống</Text>
+      ) : (
+        <>
+          <FlatList
+            data={cartItems}
+            keyExtractor={(_, i) => i.toString()}
+            renderItem={renderItem}
+          />
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Tổng cộng:</Text>
+            <Text style={styles.totalValue}>{calculateTotal().toLocaleString()} đ</Text>
+          </View>
+        </>
+      )}
     </View>
   );
-};
+}
 
-export default CartScreen;
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 15, backgroundColor: '#fff' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  itemContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    marginBottom: 12,
+    padding: 10,
+    alignItems: 'center',
+  },
+  image: { width: 70, height: 70, borderRadius: 8, marginRight: 10 },
+  name: { fontSize: 16, fontWeight: '600', color: '#333' },
+  price: { color: ORANGE, fontWeight: 'bold', marginTop: 4 },
+  quantityRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
+  totalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    paddingVertical: 15,
+    marginTop: 10,
+  },
+  totalLabel: { fontSize: 18, fontWeight: 'bold', color: '#111' },
+  totalValue: { fontSize: 18, fontWeight: 'bold', color: ORANGE },
+  empty: { textAlign: 'center', fontSize: 16, marginTop: 40, color: '#999' },
+});
