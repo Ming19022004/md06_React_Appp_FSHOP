@@ -20,10 +20,9 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const res = await API.get(`/products/${productId}`); // bỏ /detail nếu backend trả product object
+        const res = await API.get(`/products/${productId}`);
         console.log('Product detail API:', res.data);
         setProduct(res.data.data || null);
-
       } catch (err) {
         console.error(err);
         Alert.alert('Lỗi tải sản phẩm, thử lại sau.');
@@ -36,6 +35,12 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
   const handleCart = async () => {
     if (!size) return Alert.alert('Chọn size trước khi thêm vào giỏ hàng.');
+
+    // 🔹 Kiểm tra tồn kho size
+    const selectedSize = product?.size?.find((s: any) => s.name === size);
+    if (!selectedSize || selectedSize.stock <= 0)
+      return Alert.alert('Size này đã hết hàng.');
+
     const userId = await AsyncStorage.getItem('userId');
     if (!userId)
       return Alert.alert('Bạn cần đăng nhập!', '', [
@@ -123,13 +128,28 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           </Text>
           <Text style={styles.stock}>Kho: {product?.stock ?? 0}</Text>
 
-          {/* SIZE */}
+          {/* SIZE — có kiểm tra tồn kho */}
           <View style={styles.row}>
             <Text style={styles.label}>Size:</Text>
-            {product?.size?.map((s: string) => (
-              <TouchableOpacity key={s} onPress={() => setSize(s)}
-                style={[styles.sizeBox, size === s && styles.sizeActive]}>
-                <Text style={[styles.sizeText, size === s && styles.sizeTextActive]}>{s}</Text>
+            {product?.size?.map((s: any) => (
+              <TouchableOpacity
+                key={s.name}
+                onPress={() => s.stock > 0 && setSize(s.name)}
+                disabled={s.stock <= 0}
+                style={[
+                  styles.sizeBox,
+                  size === s.name && styles.sizeActive,
+                  s.stock <= 0 && { opacity: 0.4 }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sizeText,
+                    size === s.name && styles.sizeTextActive
+                  ]}
+                >
+                  {s.name} {s.stock <= 0 ? '(hết)' : ''}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -138,9 +158,13 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
           {/* SỐ LƯỢNG */}
           <View style={styles.qtyRow}>
-            <TouchableOpacity style={styles.qtyBtn} onPress={() => setQty(q => Math.max(1, q - 1))}><Text style={styles.qtyTxt}>-</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.qtyBtn} onPress={() => setQty(q => Math.max(1, q - 1))}>
+              <Text style={styles.qtyTxt}>-</Text>
+            </TouchableOpacity>
             <Text style={styles.qtyNum}>{qty}</Text>
-            <TouchableOpacity style={styles.qtyBtn} onPress={() => setQty(q => q + 1)}><Text style={styles.qtyTxt}>+</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.qtyBtn} onPress={() => setQty(q => q + 1)}>
+              <Text style={styles.qtyTxt}>+</Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.total}>Tổng: {total?.toLocaleString ? total.toLocaleString() : '0'} đ</Text>
