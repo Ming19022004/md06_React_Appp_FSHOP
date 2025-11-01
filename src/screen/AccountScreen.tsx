@@ -1,136 +1,217 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import MCI from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useNavigation } from '@react-navigation/native'
 import AsyncStorge from '@react-native-async-storge/async-storge'
-import { GoogleSignIn } from '@react-native-google-signin/google-signin'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+import API from '../api';
+import { GoogleSignin } from '@react-native-google-signin/google-signin'
 import { LoginManager } from 'react-native-fbsdk-next'
-import API from '../api'
 
 
 
-export default function AccountScreen(){
-     const nav = useNavigation()
-      const [show, setShow] = React.useState(false)
-      const [isIn, setIn] = React.useState(false)
-      React.useEffect(()=>{
-        (async()=>{
-          const id = await AsyncStorage.getItem('userId')
-          setIn(!!id)
-        })()
-        const unsub = nav.addListener('focus', async()=>{
-          const id = await AsyncStorage.getItem('userId')
-          setIn(!!id)
-        })
-        return unsub
-      },[nav])
+type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  PersonalInfo: undefined;
+  Cart: undefined;
+  Chat: undefined;
+  OrderTracking: undefined;
+  PrivacyPolicy: undefined;
+};
 
-      const out=async()=>{
-        try{
-          GoogleSignin.configure({webClientId:'985098184266-s3mp7f1q7t899ef5g3eu2huh3ocarusj.apps.googleusercontent.com'})
-          const u=await GoogleSignin.getCurrentUser()
-          if(u){await GoogleSignin.revokeAccess();await GoogleSignin.signOut()}
-          await LoginManager.logOut()
-          await AsyncStorage.clear()
-          Alert.alert('OK','Đã đăng xuất')
-          nav.reset({index:0,routes:[{name:'Login'}]})
-        }catch(e){Alert.alert('Lỗi','Không thể đăng xuất')}
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface MenuItem {
+  icon: string;
+  label: string;
+  screen?: keyof RootStackParamList;
+}
+
+const menuItems: MenuItem[] = [
+  { icon: 'cart-outline', label: 'Giỏ hàng', screen: 'Cart' },
+  { icon: 'truck-check-outline', label: 'Theo dõi đơn hàng', screen: 'OrderTracking' },
+  { icon: 'account-outline', label: 'Thông tin cá nhân', screen: 'PersonalInfo' },
+  { icon: 'chat-outline', label: 'Trò chuyện', screen: 'Chat' },
+  { icon: 'shield-lock-outline', label: 'Chính sách và bảo mật', screen: 'PrivacyPolicy' },
+];
+
+const AccountScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      const userId = await AsyncStorage.getItem('userId');
+      setIsLoggedIn(!!userId);
+    };
+    const unsubscribe = navigation.addListener('focus', checkLoginStatus);
+    checkLoginStatus();
+    return unsubscribe;
+  }, [navigation]);
+
+  const doLogout = async () => {
+    try {
+      GoogleSignin.configure({
+        webClientId: '134198151461-6jq2sd1ivaq98rdr9topkb3nktnkj5ls.apps.googleusercontent.com',
+      });
+  
+      const currentUser = await GoogleSignin.getCurrentUser();
+      if (currentUser) {
+        await GoogleSignin.revokeAccess();
+        await GoogleSignin.signOut();
       }
-
-      const menus=[
-        ['cart-outline','Giỏ hàng','Cart'],
-        ['truck-check-outline','Theo dõi đơn hàng','OrderTracking'],
-        ['account-outline','Thông tin cá nhân','PersonalInfo'],
-        ['chat-outline','Trò chuyện','Chat'],
-        ['shield-lock-outline','Chính sách và bảo mật','PrivacyPolicy'],
-      ]
-
-      return(
-        <View style={{flex:1,padding:15,backgroundColor:'#fff'}}>
-          <Text style={{textAlign:'center',fontSize:22,fontWeight:'700',marginBottom:12,backgroundColor:'orange',padding:8,borderRadius:8}}>F7 Shop</Text>
-
-          {menus.map((m,i)=>(
-            <TouchableOpacity key={i} style={s.row} onPress={()=>nav.navigate(m[2])}>
-              <MCI name={m[0]} size={22}/>
-              <Text style={s.txt}>{m[1]}</Text>
-            </TouchableOpacity>
-          ))}
-
-          {isIn?
-            <TouchableOpacity style={s.row} onPress={()=>setShow(true)}>
-              <MCI name='logout' size={22} color='red'/>
-              <Text style={[s.txt,{color:'red'}]}>Đăng xuất</Text>
-            </TouchableOpacity>
-          :
-            <>
-              <TouchableOpacity style={s.row} onPress={()=>nav.navigate('Login')}>
-                <MCI name='login' size={22} color='blue'/>
-                <Text style={[s.txt,{color:'blue'}]}>Đăng nhập</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.row} onPress={()=>nav.navigate('Register')}>
-                <MCI name='account-plus' size={22} color='green'/>
-                <Text style={[s.txt,{color:'green'}]}>Đăng ký</Text>
-              </TouchableOpacity>
-            </>
-          }
-
-          {show && (
-            <View style={{marginTop:20,padding:10,backgroundColor:'#eee',borderRadius:10}}>
-              <Text style={{textAlign:'center',marginBottom:10}}>Bạn có chắc muốn đăng xuất?</Text>
-              <View style={{flexDirection:'row',justifyContent:'space-around'}}>
-                <TouchableOpacity style={{backgroundColor:'red',padding:8,borderRadius:8}} onPress={out}>
-                  <Text style={{color:'#fff'}}>Có</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={{backgroundColor:'green',padding:8,borderRadius:8}} onPress={()=>setShow(false)}>
-                  <Text style={{color:'#fff'}}>Không</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
-      )
+  
+      await LoginManager.logOut();
+      await AsyncStorage.clear();
+  
+      Alert.alert('Đã đăng xuất!');
+      setIsLoggedIn(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } catch (err) {
+      console.error('❌ Logout error:', err);
+      Alert.alert('Lỗi', 'Không thể đăng xuất');
     }
+  };
 
+  const deleteProfile = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        Alert.alert('Lỗi', 'Không tìm thấy tài khoản');
+        return;
+      }
+      await API.delete(`/users/${userId}`);
+      await AsyncStorage.clear();
+      Alert.alert('Tài khoản đã được xoá');
+      setIsLoggedIn(false);
+      navigation.navigate('Login');
+    } catch (err) {
+      Alert.alert('Lỗi', 'Không thể xoá hồ sơ');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Sports Shop</Text>
+
+      {menuItems.map((m) => (
+        <TouchableOpacity
+          key={m.icon}
+          style={styles.row}
+          onPress={() => {
+            if (m.screen) navigation.navigate(m.screen);
+          }}>
+          <MCI name={m.icon} size={22} color="#0f766e" />
+          <Text style={styles.label}>{m.label}</Text>
+        </TouchableOpacity>
+      ))}
+
+      {/* Nếu đã đăng nhập thì hiện nút đăng xuất */}
+      {isLoggedIn && (
+        <TouchableOpacity style={styles.row} onPress={() => setConfirmLogout(true)}>
+          <MCI name="logout" size={22} color="#e11d48" />
+          <Text style={[styles.label, { color: '#e11d48' }]}>Đăng xuất</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Nếu chưa đăng nhập thì hiện nút đăng nhập & đăng ký */}
+      {!isLoggedIn && (
+        <>
+          <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Login')}>
+            <MCI name="login" size={22} color="#2563eb" />
+            <Text style={[styles.label, { color: '#2563eb' }]}>Đăng nhập</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Register')}>
+            <MCI name="account-plus" size={22} color="#16a34a" />
+            <Text style={[styles.label, { color: '#16a34a' }]}>Đăng ký</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* Modal xác nhận đăng xuất */}
+      {confirmLogout && (
+        <View style={styles.modal}>
+          <Text style={styles.modalText}>Bạn có muốn đăng xuất tài khoản không?</Text>
+          <View style={styles.btnWrap}>
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: '#f87171' }]}
+              onPress={doLogout}>
+              <Text style={styles.btnTxt}>Có</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: '#4ade80' }]}
+              onPress={() => setConfirmLogout(false)}>
+              <Text style={styles.btnTxt}>Không</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+export default AccountScreen;
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#EEEEEE',
+        padding: 16,
     },
-    backButton: {
+    header: {
+        fontSize: 22,
+        fontWeight: '700',
+        alignSelf: 'center',
+        marginBottom: 16,
+        backgroundColor: '#0f766e',
+        color: '#fff',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 10,
+        overflow: 'hidden',
+    },
+    row: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        marginTop: 10,
-    },
-    backText: {
-        fontSize: 18,
-        color: '#000',
-    },
-    title1: {
-        fontSize: 20,
-        marginLeft: 70,
-    },
-    bottomNav: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 10,
-        position: 'absolute',
-        bottom: 10,
-        left: 20,
-        right: 20,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginBottom: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 1,
     },
-    selectedText: {
-        fontSize: 18,
-        color: '#000', // Màu sắc khi chọn
+    label: { marginLeft: 12, fontSize: 16, color: '#111827' },
+    modal: {
+      marginTop: 32,
+      backgroundColor: '#f3f4f6',
+      borderRadius: 12,
+      padding: 18,
     },
-    unselectedText: {
-        fontSize: 18,
-        color: '#888', // Màu sắc khi không chọn
-    },
+      modalText: {
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 16,
+        color: '#111827',
+   },
+    btnWrap: { flexDirection: 'row', justifyContent: 'space-evenly' },
+    btn: { paddingVertical: 10, paddingHorizontal: 28, borderRadius: 8 },
+    btnTxt: { color: '#fff', fontWeight: '600' },
 });
