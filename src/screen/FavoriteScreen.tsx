@@ -1,93 +1,165 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
-import { useState } from "react";
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Dimensions,
+  Image,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator } from 'react-native-paper';
+import { useFocusEffect } from '@react-navigation/native';
+import API from '../api';
 
 const { width } = Dimensions.get('window');
 
-const FavoritesScreen = ({ navigation }: any) => {
+const FavoriteScreen = ({ navigation }: any) => {
+  const [favoriteItems, setFavoriteItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    const [selected, setSelected] = useState('home');
+  const fetchFavorites = async () => {
+    setIsLoading(true);
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        setFavoriteItems([]);
+        return;
+      }
 
-    const handlePress = (screen: 'home' | 'search' | 'heart' | 'user') => {
-        setSelected(screen);
-        if (screen === 'home') {
-            navigation.navigate('Home');
-        } else if (screen === 'search') {
-            navigation.navigate('Search');
-        } else if (screen === 'heart') {
-            navigation.navigate('Favorites');
-        } else if (screen === 'user') {
-            navigation.navigate('Account');
-        }
-    };
+      const res = await API.get(`/favorites/${userId}`);
+      const data = res.data;
 
-    return (
-        <View style={styles.container}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Text style={styles.backText}>Back</Text> {/* Thay thế icon bằng text */}
-                <Text style={styles.title1}>Màn Favorite</Text>
-            </TouchableOpacity>
+      if (!Array.isArray(data) || data.length === 0) {
+        setFavoriteItems([]);
+        return;
+      }
 
-            {/* Bottom Nav */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity onPress={() => handlePress('home')}>
-                    <Text style={selected === 'home' ? styles.selectedText : styles.unselectedText}>Home</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('search')}>
-                    <Text style={selected === 'search' ? styles.selectedText : styles.unselectedText}>Search</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('heart')}>
-                    <Text style={selected === 'heart' ? styles.selectedText : styles.unselectedText}>Favorites</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('user')}>
-                    <Text style={selected === 'user' ? styles.selectedText : styles.unselectedText}>Account</Text>
-                </TouchableOpacity>
+    const productDetails = data.map((fav: any) => ({
+  _id: fav.productId,
+  name: fav.product?.name || 'Không rõ tên',
+  price: fav.product?.price || 0,
+  image: fav.product?.image,
+  type: fav.type || 'normal',
+}));
+
+      const filtered = productDetails.filter((p) => p !== null);
+      setFavoriteItems(filtered);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách yêu thích:', err);
+      setFavoriteItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchFavorites();
+    }, [])
+  );
+
+  const formatPrice = (price: number | string | undefined) =>
+    price !== undefined ? Number(price).toLocaleString('vi-VN') + 'đ' : '';
+
+  const Item = ({ item }: { item: any }) => (
+    <View style={styles.card}>
+      <Image source={{ uri: item.image }} style={styles.imgCard} />
+      <Text style={styles.nameCard} numberOfLines={1}>
+        {item.name}
+      </Text>
+      <Text style={styles.priceCard}>{formatPrice(item.price)}</Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Yêu thích</Text>
+
+      {isLoading ? (
+        <ActivityIndicator size="large" style={{ marginTop: 30 }} />
+      ) : favoriteItems.length === 0 ? (
+        <Text style={styles.textNull}>
+          Hiện tại chưa có sản phẩm yêu thích nào
+        </Text>
+      ) : (
+        <FlatList
+          data={favoriteItems}
+          keyExtractor={(item) => item._id}
+          numColumns={2}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          renderItem={({ item }) => (
+            <View style={{ flex: 1, margin: 8 }}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() =>
+                  navigation.navigate('ProductDT', {
+                    productId: item._id,
+                  })
+                }>
+                <Item item={item} />
+              </TouchableOpacity>
             </View>
-        </View>
-    );
+          )}
+        />
+      )}
+    </View>
+  );
 };
 
-export default FavoritesScreen;
+export default FavoriteScreen;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    backButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 15,
-        marginTop: 10,
-    },
-    backText: {
-        fontSize: 18,
-        color: '#000',
-    },
-    title1: {
-        fontSize: 20,
-        marginLeft: 70,
-    },
-    bottomNav: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 10,
-        position: 'absolute',
-        bottom: 10,
-        left: 20,
-        right: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
-    },
-    selectedText: {
-        fontSize: 18,
-        color: '#000', // Màu sắc khi chọn
-    },
-    unselectedText: {
-        fontSize: 18,
-        color: '#888', // Màu sắc khi không chọn
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    backgroundColor: '#0f766e',
+    padding: 10,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontSize: 23,
+    fontWeight: 'bold',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 5,
+    height: 230,
+    width: 180,
+    borderRadius: 16,
+    elevation: 5,
+  },
+  imgCard: {
+    width: width / 2 - 32,
+    height: width / 2 - 32,
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  nameCard: {
+    fontSize: 13,
+    marginTop: 5,
+    marginLeft: 10,
+    fontFamily: 'Lora-Regular',
+    width: 165,
+  },
+  priceCard: {
+    fontSize: 13,
+    marginTop: 5,
+    marginLeft: 10,
+    fontFamily: 'Lora-Regular',
+    color: '#0f766e',
+  },
+  textNull: {
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    flex: 1,
+    fontFamily: 'Lora-Regular',
+    fontSize: 16,
+  },
 });
