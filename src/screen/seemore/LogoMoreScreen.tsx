@@ -25,7 +25,6 @@ const LogoMoreScreen = ({ navigation, route }: any) => {
 
     useEffect(() => {
         let isMounted = true;
-{/* ✅ Đây là tab chứa Home, Search, Account, Favorites */}
         const fetchProductsByCategory = async () => {
             try {
                 const res = await API.get('/products');
