@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import MCI from 'react-native-vector-icons/MaterialCommunityIcons'
 import { useNavigation } from '@react-navigation/native'
-import AsyncStorge from '@react-native-async-storge/async-storge'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import API from '../api';
