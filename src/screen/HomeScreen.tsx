@@ -44,15 +44,15 @@ const HomeScreen = ({ navigation }: any) => {
 
   const loadAllData = async () => {
     try {
-      const [categoryData, productData] =
+      const [bannerData, categoryData, productData] =
         await Promise.all([
-//           fetchBanners(),
+          fetchBanners(),
           fetchCategories(),
           fetchAllProducts(),
 //           fetchSaleProducts(),
         ]);
 
-      setBanners([]);
+      setBanners(bannerData);
       setCategories(categoryData);
       setProducts(productData);
       setSaleProducts([]);
@@ -160,7 +160,6 @@ const HomeScreen = ({ navigation }: any) => {
       >
 
         {/* Banners */}
-              {/*
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -191,7 +190,6 @@ const HomeScreen = ({ navigation }: any) => {
             />
           ))}
         </View>
-        */}
         {/* Danh mục */}
         <Section title="Danh mục">
           <ScrollView
@@ -211,10 +209,15 @@ const HomeScreen = ({ navigation }: any) => {
                     })
                   }
                 >
+                {/*
                   <Image
                     source={{ uri: cat.image }}
                     style={styles.categoryImage}
                   />
+                  */}
+                      <Text style={styles.categoryText} numberOfLines={1}>
+                        {cat.name}
+                      </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -364,4 +367,23 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  categoryItem: {
+    backgroundColor: "#eee",
+    borderRadius: 50,
+    width: 90,
+    height: 90,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    margin: 10,
+    paddingHorizontal: 4,
+  }
 });
