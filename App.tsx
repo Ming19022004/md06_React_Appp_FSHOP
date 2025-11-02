@@ -8,6 +8,7 @@ import SplashScreen from "./src/screen/SplashScreen";
 import BannerDetail from "./src/screen/banner/BannerDetail";
 import TabNavigator from "./src/TabNavigatior/TabNavigatior";
 import ProductDetailScreen from "./src/screen/ProductDetailScreen";
+import CartScreen from './src/screen/CartScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ export default function App() {
         <Stack.Screen name="MainTab" component={TabNavigator} />
         <Stack.Screen name="Banner" component={BannerDetail} />
        <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
+       <Stack.Screen name="Cart" component={CartScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
