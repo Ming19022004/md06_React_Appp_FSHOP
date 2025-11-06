@@ -10,7 +10,9 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import API from '../api'; // axios instance
+import API from '../api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Snackbar from 'react-native-snackbar';
 
 const PRIMARY = '#0f766e';
 const ORANGE = '#f97316';
@@ -22,6 +24,8 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [bookmark, setBookmark] = useState(false);
+  const productType = 'normal';
 
   // Tổng tiền
   const totalPrice = product?.price ? product.price * quantity : 0;
@@ -39,6 +43,75 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
       Alert.alert('Lỗi', 'Không thể tải sản phẩm, vui lòng thử lại sau.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Kiểm tra trạng thái yêu thích
+  useEffect(() => {
+    const checkBookmark = async () => {
+      try {
+        const userId = await AsyncStorage.getItem('userId');
+        if (!userId) return;
+        const res = await API.get(
+          `/favorites/check/${userId}/${productId}?type=${productType}`,
+        );
+        const isFav = res.data?.isFavorite ?? res.data?.exists ?? false;
+        setBookmark(isFav);
+      } catch (error: any) {
+        console.log('❌ Lỗi kiểm tra trạng thái yêu thích:', error.message);
+        setBookmark(false);
+      }
+    };
+    checkBookmark();
+  }, [productId]);
+
+  // Thêm vào yêu thích
+  const saveBookmark = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        Alert.alert(
+          'Yêu cầu đăng nhập',
+          'Bạn cần đăng nhập để thêm sản phẩm vào yêu thích',
+          [
+            { text: 'Huỷ', style: 'cancel' },
+            { text: 'Đăng nhập', onPress: () => navigation.navigate('Login') },
+          ],
+        );
+        return;
+      }
+
+      await API.post('/favorites/add', { userId, productId, type: productType });
+      setBookmark(true);
+      Snackbar.show({
+        text: 'Đã thêm vào yêu thích!',
+        duration: Snackbar.LENGTH_SHORT,
+        action: {
+          text: 'Xem',
+          onPress: () => navigation.navigate('Home', { screen: 'Favorite' }),
+        },
+      });
+    } catch (err) {
+      console.error('❌ Lỗi thêm favorite:', err);
+      Alert.alert('Không thêm được vào Yêu thích!');
+    }
+  };
+
+  // Xóa khỏi yêu thích
+  const removeBookmark = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) return;
+
+      await API.delete(`/favorites/${userId}/${productId}?type=${productType}`);
+      setBookmark(false);
+      Snackbar.show({
+        text: 'Đã xoá khỏi yêu thích!',
+        duration: Snackbar.LENGTH_SHORT,
+      });
+    } catch (err) {
+      console.error('❌ Lỗi xoá favorite:', err);
+      Alert.alert('Không xoá được khỏi Yêu thích!');
     }
   };
 
@@ -140,7 +213,21 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
         {/* Thông tin sản phẩm */}
         <View style={styles.content}>
-          <Text style={styles.name}>{product.name}</Text>
+          <View style={styles.txt}>
+            <Text style={styles.name}>{product.name}</Text>
+            <TouchableOpacity
+              onPress={() => (bookmark ? removeBookmark() : saveBookmark())}>
+              <Image
+                source={
+                  bookmark
+                    ? require('../assets/images/check_fav.png')
+                    : require('../assets/images/uncheck_fav.png')
+                }
+                style={styles.heart}
+              />
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.price}>
             Giá: {product.price.toLocaleString()} đ
           </Text>
@@ -205,7 +292,7 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
             <Text style={styles.cartText}>Thêm vào giỏ hàng</Text>
           </TouchableOpacity>
 
-          {/* 🟢 Đánh giá & Bình luận */}
+          {/* Đánh giá & Bình luận */}
           <View style={{ marginTop: 24 }}>
             <Text
               style={{ fontSize: 16, fontWeight: '700', marginBottom: 8 }}>
@@ -232,7 +319,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
                     }}
                   />
                   <View style={{ flex: 1 }}>
-                    {/* Tên + Sao */}
                     <Text
                       style={{ fontWeight: '600', marginBottom: 4 }}>
                       {c.userId?.name || 'Người dùng'}
@@ -311,6 +397,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   content: { padding: 16 },
+  txt: { flexDirection: 'row', alignItems: 'center' },
+  heart: { width: 22, height: 22, marginLeft: 6 },
   name: { fontSize: 20, fontWeight: 'bold', marginBottom: 8, width: 345 },
   price: { fontSize: 18, color: ORANGE, marginVertical: 6, fontWeight: '700' },
   stock: { fontSize: 14, marginBottom: 12, color: '#374151' },
