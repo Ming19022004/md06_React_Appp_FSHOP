@@ -1,29 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, Image, TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../api';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+// Màu chủ đạo
 const PRIMARY = '#0f766e';
 const ORANGE = '#f97316';
 const RED = '#ef4444';
 const GREEN = '#10b981';
 
+// Hiển thị ảnh sản phẩm (có loading)
 const CustomImage = ({ source, style }: any) => {
-  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  if (error) {
-    return (
-      <View style={[style, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
-        <Icon name="image-outline" size={30} color="#ccc" />
-        <Text style={{ fontSize: 10, color: '#ccc', marginTop: 5 }}>No Image</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={style}>
@@ -31,11 +30,19 @@ const CustomImage = ({ source, style }: any) => {
         source={source}
         style={[style, { position: 'absolute' }]}
         resizeMode="cover"
-        onError={() => setError(true)}
         onLoad={() => setLoading(false)}
       />
       {loading && (
-        <View style={[style, { position: 'absolute', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
+        <View
+          style={[
+            style,
+            {
+              position: 'absolute',
+              backgroundColor: '#f0f0f0',
+              justifyContent: 'center',
+              alignItems: 'center',
+            },
+          ]}>
           <ActivityIndicator size="small" color={PRIMARY} />
         </View>
       )}
@@ -58,29 +65,15 @@ export default function CartScreen({ navigation }: any) {
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: boolean }>({});
   const isFocused = useIsFocused();
 
+  // 🧩 Lấy giỏ hàng
   const fetchCart = async (id: string) => {
     try {
       setLoading(true);
-      const res = await API.get(`/carts/id/${id}`);
-      console.log('📦 Cart response:', JSON.stringify(res.data, null, 2));
-
-      // ✅ Sửa: Lấy đúng cấu trúc response từ backend
+      const res = await API.get(`/carts/${id}`);
       const items = res.data?.data?.items || res.data?.items || [];
-      console.log('📦 Cart items:', items.length);
       setCartItems(items);
-
-      // ✅ TỰ ĐỘNG CHỌN TẤT CẢ ITEMS
-      const autoSelect: { [key: string]: boolean } = {};
-      items.forEach((item: any) => {
-        if (item.product_id) {
-          const key = `${item.product_id._id}_${item.size}`;
-          autoSelect[key] = true;
-        }
-      });
-      setSelectedItems(autoSelect);
-
     } catch (err) {
-      console.error('❌ Fetch cart error:', err);
+      console.error('❌ Lỗi khi tải giỏ hàng:', err);
       Alert.alert('Lỗi', 'Không thể tải giỏ hàng');
       setCartItems([]);
     } finally {
@@ -98,6 +91,7 @@ export default function CartScreen({ navigation }: any) {
     if (isFocused) load();
   }, [isFocused]);
 
+  // ➕➖ Cập nhật số lượng
   const updateQuantity = async (item: any, delta: number) => {
     if (!userId) return;
     const newQty = item.quantity + delta;
@@ -112,108 +106,92 @@ export default function CartScreen({ navigation }: any) {
         product_id: item.product_id._id,
         size: item.size,
         quantity: newQty,
-        type: item.type || 'normal', // ✅ Thêm type
+        type: item.type || 'normal',
       });
       fetchCart(userId);
     } catch (err) {
-      console.error('❌ Update quantity error:', err);
+      console.error('❌ Lỗi cập nhật số lượng:', err);
     }
   };
 
+  // ❌ Xoá sản phẩm
   const handleDeleteItem = async (item: any) => {
     if (!userId) return;
     try {
-      // ✅ SỬA DELETE: DÙNG data CHỨ KHÔNG DÙNG params
       await API.delete(`/carts/${userId}/item`, {
         data: {
           product_id: item.product_id._id,
           size: item.size,
-          type: item.type || 'normal', // ✅ Thêm type
-        }
+          type: item.type || 'normal',
+        },
       });
-
       fetchCart(userId);
     } catch (err) {
-      console.error(err);
-      Alert.alert('Xoá thất bại', 'Không thể xoá sản phẩm');
+      console.error('❌ Lỗi xoá sản phẩm:', err);
+      Alert.alert('Lỗi', 'Không thể xoá sản phẩm');
     }
   };
 
-  const toggleSelectItem = (item: any) => {
-    const key = `${item.product_id._id}_${item.size}`;
-    setSelectedItems(prev => ({ ...prev, [key]: !prev[key] }));
+  // ✅ Chọn sản phẩm
+  const toggleSelectItem = (productId: string, size: string) => {
+    const key = `${productId}_${size}`;
+    setSelectedItems(prev => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
+  // 💰 Tính tổng tiền đã chọn
   const calculateSelectedTotal = () => {
-    const total = cartItems.reduce((sum, item) => {
-      const key = `${item.product_id._id}_${item.size}`;
-      
-      // Nếu item không được chọn thì skip
-      if (!selectedItems[key]) return sum;
-      
-      // Lấy giá của product
+    return cartItems.reduce((sum, item) => {
       const product = item.product_id;
-      let price = 0;
-      
-      if (item.type === 'sale') {
-        // Sản phẩm sale: ưu tiên discount_price
-        price = product.discount_price ?? product.price ?? 0;
-      } else {
-        // Sản phẩm thường: dùng price
-        price = product.price ?? 0;
-      }
-      
-      const quantity = item.quantity || 1;
-      const itemTotal = price * quantity;
-      
-      console.log(`💰 Item: ${product.name}, Price: ${price}, Qty: ${quantity}, Total: ${itemTotal}`);
-      
-      return sum + itemTotal;
+      const key = `${product._id}_${item.size}`;
+      if (!selectedItems[key]) return sum;
+
+      const price =
+        item.type === 'sale'
+          ? product.discount_price ?? product.price ?? 0
+          : product.price ?? 0;
+
+      return sum + price * (item.quantity || 1);
     }, 0);
-    
-    console.log(`💰 TỔNG CỘNG: ${total}`);
-    return total;
   };
 
+  // 🛒 Mua ngay
   const handleBuyNow = () => {
-    const selected = cartItems.filter(item => selectedItems[`${item.product_id._id}_${item.size}`]);
-    if (!selected.length) return Alert.alert('Thông báo', 'Chọn ít nhất một sản phẩm để mua');
+    const selected = cartItems.filter(item => {
+      const key = `${item.product_id._id}_${item.size}`;
+      return selectedItems[key];
+    });
+    if (selected.length === 0) {
+      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất một sản phẩm để mua');
+      return;
+    }
     navigation.navigate('Checkout', { selectedItems: selected });
   };
 
+  // 📦 Hiển thị từng sản phẩm
   const renderItem = ({ item }: any) => {
     const product = item.product_id;
-    
-    // ✅ Kiểm tra nếu product không tồn tại (đã bị xóa)
-    if (!product) {
-      return null;
-    }
-    
-    const key = `${product._id}_${item.size}`;
-    const isChecked = !!selectedItems[key];
-    
-    // ✅ Tính giá với fallback
-    let finalPrice = 0;
-    if (item.type === 'sale') {
-      finalPrice = product.discount_price ?? product.price ?? 0;
-    } else {
-      finalPrice = product.price ?? 0;
-    }
-    
-    // ✅ Tính tổng tiền cho item này
-    const itemTotal = finalPrice * (item.quantity || 1);
+    const productId = product?._id || '';
+    const key = `${productId}_${item.size}`;
+    const checked = !!selectedItems[key];
+    const price =
+      item.type === 'sale'
+        ? product.discount_price ?? product.price ?? 0
+        : product.price ?? 0;
 
     return (
       <View style={styles.itemContainer}>
-        <TouchableOpacity onPress={() => toggleSelectItem(item)} style={styles.checkbox}>
-          <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+        <TouchableOpacity onPress={() => toggleSelectItem(productId, item.size)} style={styles.checkbox}>
+          <View style={[styles.checkboxBox, checked && styles.checkboxChecked]} />
         </TouchableOpacity>
 
         <CustomImage source={{ uri: getProductImageUrl(product) }} style={styles.image} />
 
         <View style={styles.infoContainer}>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.price}>Giá: {finalPrice?.toLocaleString('vi-VN')} đ</Text>
+          <Text style={styles.price}>Giá: {price?.toLocaleString()} đ</Text>
           <Text style={styles.size}>Size: {item.size}</Text>
 
           <View style={styles.quantityRow}>
@@ -226,14 +204,11 @@ export default function CartScreen({ navigation }: any) {
                 <Text style={styles.qtyText}>+</Text>
               </TouchableOpacity>
             </View>
-            
-            {/* ✅ HIỂN THỊ TỔNG TIỀN CHO ITEM */}
-            <Text style={styles.itemTotal}>{itemTotal.toLocaleString('vi-VN')} đ</Text>
-          </View>
 
-          <TouchableOpacity onPress={() => handleDeleteItem(item)} style={styles.deleteButton}>
-            <Text style={styles.deleteText}>🗑 Xoá</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDeleteItem(item)} style={styles.deleteButton}>
+              <Text style={styles.deleteText}>🗑 Xoá</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -248,10 +223,12 @@ export default function CartScreen({ navigation }: any) {
       ) : (
         <>
           <FlatList data={cartItems} keyExtractor={(_, i) => i.toString()} renderItem={renderItem} />
+
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>Tổng cộng đã chọn:</Text>
             <Text style={styles.totalValue}>{calculateSelectedTotal().toLocaleString()} đ</Text>
           </View>
+
           <TouchableOpacity style={styles.buyNowButton} onPress={handleBuyNow}>
             <Text style={styles.buyNowText}>Mua ngay</Text>
           </TouchableOpacity>
@@ -261,9 +238,19 @@ export default function CartScreen({ navigation }: any) {
   );
 }
 
+// 🎨 Style
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15, backgroundColor: '#EEEEEE' },
-  itemContainer: { flexDirection: 'row', padding: 12, marginBottom: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#eee', alignItems: 'center' },
+  itemContainer: {
+    flexDirection: 'row',
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
+    alignItems: 'center',
+  },
   image: { width: 90, height: 90, borderRadius: 10, marginRight: 10, borderWidth: 1, borderColor: '#ddd' },
   infoContainer: { flex: 1, justifyContent: 'space-between' },
   name: { fontSize: 16, fontWeight: '600', color: '#333' },
@@ -273,7 +260,6 @@ const styles = StyleSheet.create({
   qtyButton: { paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: PRIMARY, borderRadius: 8, marginHorizontal: 5, backgroundColor: '#eef8f6' },
   qtyText: { fontSize: 16, fontWeight: 'bold', color: PRIMARY },
   quantity: { fontSize: 14, color: '#888' },
-  itemTotal: { fontSize: 15, fontWeight: 'bold', color: '#059669', marginLeft: 10 }, // ✅ THÊM STYLE
   deleteButton: { marginTop: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#fee2e2', borderRadius: 8 },
   deleteText: { color: RED, fontWeight: 'bold' },
   checkbox: { marginRight: 10, padding: 5 },
