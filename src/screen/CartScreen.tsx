@@ -14,15 +14,29 @@ import API from '../api';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-// Màu chủ đạo
+// 🎨 Màu chủ đạo
 const PRIMARY = '#0f766e';
 const ORANGE = '#f97316';
 const RED = '#ef4444';
 const GREEN = '#10b981';
 
-// Hiển thị ảnh sản phẩm (có loading)
+// 🖼 CustomImage — có xử lý loading + lỗi ảnh
 const CustomImage = ({ source, style }: any) => {
+  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  if (error) {
+    return (
+      <View
+        style={[
+          style,
+          { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' },
+        ]}>
+        <Icon name="image-outline" size={30} color="#ccc" />
+        <Text style={{ fontSize: 10, color: '#ccc', marginTop: 5 }}>No Image</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={style}>
@@ -31,6 +45,7 @@ const CustomImage = ({ source, style }: any) => {
         style={[style, { position: 'absolute' }]}
         resizeMode="cover"
         onLoad={() => setLoading(false)}
+        onError={() => setError(true)}
       />
       {loading && (
         <View
@@ -50,6 +65,7 @@ const CustomImage = ({ source, style }: any) => {
   );
 };
 
+// 🧩 Hàm lấy ảnh sản phẩm
 const getProductImageUrl = (product: any) => {
   if (!product) return 'https://via.placeholder.com/100';
   if (product.images?.length) return product.images[0];
@@ -65,7 +81,7 @@ export default function CartScreen({ navigation }: any) {
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: boolean }>({});
   const isFocused = useIsFocused();
 
-  // 🧩 Lấy giỏ hàng
+  // 🧱 Lấy giỏ hàng
   const fetchCart = async (id: string) => {
     try {
       setLoading(true);
@@ -170,7 +186,7 @@ export default function CartScreen({ navigation }: any) {
     navigation.navigate('Checkout', { selectedItems: selected });
   };
 
-  // 📦 Hiển thị từng sản phẩm
+  // 📦 Render sản phẩm
   const renderItem = ({ item }: any) => {
     const product = item.product_id;
     const productId = product?._id || '';
@@ -216,6 +232,14 @@ export default function CartScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      {/* 🧭 Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
+          <Icon name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Giỏ hàng</Text>
+      </View>
+
       {loading ? (
         <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 30 }} />
       ) : cartItems.length === 0 ? (
@@ -223,12 +247,10 @@ export default function CartScreen({ navigation }: any) {
       ) : (
         <>
           <FlatList data={cartItems} keyExtractor={(_, i) => i.toString()} renderItem={renderItem} />
-
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>Tổng cộng đã chọn:</Text>
             <Text style={styles.totalValue}>{calculateSelectedTotal().toLocaleString()} đ</Text>
           </View>
-
           <TouchableOpacity style={styles.buyNowButton} onPress={handleBuyNow}>
             <Text style={styles.buyNowText}>Mua ngay</Text>
           </TouchableOpacity>
@@ -238,9 +260,20 @@ export default function CartScreen({ navigation }: any) {
   );
 }
 
-// 🎨 Style
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15, backgroundColor: '#EEEEEE' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+    marginBottom: 10,
+    position: 'relative',
+    backgroundColor: PRIMARY,
+    borderRadius: 12,
+  },
+  backIcon: { position: 'absolute', left: 0, paddingHorizontal: 10 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   itemContainer: {
     flexDirection: 'row',
     padding: 12,
@@ -250,6 +283,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   image: { width: 90, height: 90, borderRadius: 10, marginRight: 10, borderWidth: 1, borderColor: '#ddd' },
   infoContainer: { flex: 1, justifyContent: 'space-between' },
