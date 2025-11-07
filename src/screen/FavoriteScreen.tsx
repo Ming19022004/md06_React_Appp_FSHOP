@@ -36,13 +36,13 @@ const FavoriteScreen = ({ navigation }: any) => {
         return;
       }
 
-    const productDetails = data.map((fav: any) => ({
-  _id: fav.productId,
-  name: fav.product?.name || 'Không rõ tên',
-  price: fav.product?.price || 0,
-  image: fav.product?.image,
-  type: fav.type || 'normal',
-}));
+      const productDetails = data.map((fav: any) => ({
+        _id: fav.productId,
+        name: fav.product?.name || 'Không rõ tên',
+        price: fav.product?.price || 0,
+        image: fav.product?.image,
+        type: fav.type || 'normal',
+      }));
 
       const filtered = productDetails.filter((p) => p !== null);
       setFavoriteItems(filtered);

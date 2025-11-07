@@ -8,9 +8,9 @@ import SplashScreen from "./src/screen/SplashScreen";
 import BannerDetail from "./src/screen/banner/BannerDetail";
 import TabNavigator from "./src/TabNavigator/TabNavigator";
 import ProductDetailScreen from "./src/screen/ProductDetailScreen";
+import CartScreen from "./src/screen/CartScreen";
 import LogoMoreScreen from "./src/screen/seemore/LogoMoreScreen";
-import PrivacyPolicyScreen from './src/screen/PrivacyPolicyScreen';
-
+import PrivacyPolicyScreen from "./src/screen/PrivacyPolicyScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -27,7 +27,8 @@ export default function App() {
         <Stack.Screen name="MainTab" component={TabNavigator} />
         <Stack.Screen name="BannerDT" component={BannerDetail} />
         <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
-        <Stack.Screen name="Category" component={LogoMoreScreen}/>
+        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="Category" component={LogoMoreScreen} />
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       </Stack.Navigator>
     </NavigationContainer>
