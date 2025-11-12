@@ -12,6 +12,7 @@ import CartScreen from "./src/screen/CartScreen";
 import LogoMoreScreen from "./src/screen/seemore/LogoMoreScreen";
 import PrivacyPolicyScreen from "./src/screen/PrivacyPolicyScreen";
 import CheckoutScreen from "./src/screen/CheckoutScreen";
+import PersonalInfoScreen from "./src/screen/PersonalInfoScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +33,7 @@ export default function App() {
         <Stack.Screen name="Checkout" component={CheckoutScreen} />
         <Stack.Screen name="Category" component={LogoMoreScreen} />
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+        <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
