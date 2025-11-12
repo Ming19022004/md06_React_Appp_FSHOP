@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import API from '../api';
 
-// Theme colors
 const PRIMARY = '#0f766e';
 const ORANGE = '#f97316';
 
@@ -16,10 +15,20 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
 
   const fetchUser = useCallback(async () => {
-    const id = await AsyncStorage.getItem('userId');
-    if (id) {
-      const res = await API.get(`/users/${id}`);
-      setUser(res.data);
+    try {
+      const id = await AsyncStorage.getItem('userId');
+      if (id) {
+        const res = await API.get(`/users/${id}`);
+        const currentUser = res.data?.user || res.data;
+        setUser(currentUser);
+      } else {
+        const storedProfile = await AsyncStorage.getItem('localUserProfile');
+        if (storedProfile) setUser(JSON.parse(storedProfile));
+      }
+    } catch (err) {
+      console.warn('Không thể lấy thông tin user, fallback local.');
+      const storedProfile = await AsyncStorage.getItem('localUserProfile');
+      if (storedProfile) setUser(JSON.parse(storedProfile));
     }
   }, []);
 
@@ -41,22 +50,9 @@ export default function CheckoutScreen({ route, navigation }: any) {
     }, 0);
   };
 
-  const calculateDiscount = () => {
-    if (!selectedVoucher) return 0;
-    const subtotal = calculateSubtotal();
-    if (subtotal < selectedVoucher.minOrderAmount) return 0;
-
-    if (selectedVoucher.type === 'fixed' || selectedVoucher.type === 'shipping') {
-      return Math.min(selectedVoucher.discount, selectedVoucher.maxDiscount || selectedVoucher.discount);
-    }
-
-    if (selectedVoucher.type === 'percentage') {
-      const percentValue = (selectedVoucher.discount / 100) * subtotal;
-      return Math.min(percentValue, selectedVoucher.maxDiscount || percentValue);
-    }
-
-    return 0;
-  };
+  const subtotal = calculateSubtotal();
+  const shippingFee = 30000;
+  const total = subtotal + shippingFee;
 
   const renderProductItem = ({ item }: any) => {
     const product = item.product_id || item;
@@ -68,34 +64,50 @@ export default function CheckoutScreen({ route, navigation }: any) {
         />
         <View style={styles.infoContainer}>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.detail}>Size: {item.size}</Text>
           <Text style={styles.detail}>Số lượng: {item.quantity}</Text>
           <Text style={styles.price}>{getFinalPrice(product).toLocaleString()} đ</Text>
-          {product.discount_percent > 0 && (
-            <Text style={{ textDecorationLine: 'line-through', color: '#888', fontSize: 12 }}>
-              {product.price.toLocaleString()} đ
-            </Text>
-          )}
         </View>
       </View>
     );
   };
 
-  const subtotal = calculateSubtotal();
-  const shippingFee = 30000;
-  const discount = calculateDiscount();
-  const total = subtotal + shippingFee - discount;
-
   return (
     <FlatList
       ListHeaderComponent={
-        <View style={styles.container}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
+        <>
+          <View style={styles.container}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Thanh Toán</Text>
+          </View>
 
-          <Text style={styles.title}>Thanh Toán</Text>
-        </View>
+          <View style={styles.userInfoBox}>
+            <Text style={styles.sectionTitle}>Thông tin người nhận</Text>
+            {user ? (
+              <>
+                <Text style={styles.userText}>Họ tên: {user.name || 'Chưa có'}</Text>
+                <Text style={styles.userText}>SĐT: {user.phone || 'Chưa có'}</Text>
+                <Text style={styles.userText}>Email: {user.email || 'Chưa có'}</Text>
+                <Text style={styles.userText}>Địa chỉ: {user.address || 'Chưa có'}</Text>
+
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('PersonalInfo')}
+                  style={styles.changeBtn}
+                >
+                  <Text style={styles.changeText}>Chỉnh sửa thông tin</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PersonalInfo')}
+                style={styles.addInfoBtn}
+              >
+                <Text style={styles.addInfoText}>Chưa có thông tin. Cập nhật ngay.</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </>
       }
       data={selectedItems}
       renderItem={renderProductItem}
@@ -103,21 +115,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
       ListFooterComponent={
         <View style={styles.footerContainer}>
           <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Tổng gốc:</Text>
-            <Text style={styles.totalAmount}>{subtotal.toLocaleString()} đ</Text>
-          </View>
-          {selectedVoucher && (
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>Giảm giá:</Text>
-              <Text style={styles.totalAmount}>- {discount.toLocaleString()} đ</Text>
-            </View>
-          )}
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Phí vận chuyển:</Text>
-            <Text style={styles.totalAmount}>{shippingFee.toLocaleString()} đ</Text>
-          </View>
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
+            <Text style={styles.totalLabel}>Tổng tiền:</Text>
             <Text style={styles.totalAmount}>{total.toLocaleString()} đ</Text>
           </View>
         </View>
@@ -131,10 +129,26 @@ const styles = StyleSheet.create({
   backButton: { marginBottom: 10 },
   backText: { color: PRIMARY, fontWeight: 'bold' },
   title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 16, color: PRIMARY },
+  userInfoBox: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6, color: PRIMARY },
+  userText: { fontSize: 14, color: '#333', marginBottom: 4 },
+  changeBtn: { marginTop: 8, alignSelf: 'flex-start' },
+  changeText: { color: ORANGE, fontWeight: 'bold' },
+  addInfoBtn: { marginTop: 4 },
+  addInfoText: { color: ORANGE, fontStyle: 'italic' },
   itemContainer: {
     flexDirection: 'row', backgroundColor: '#fff',
     padding: 12, marginHorizontal: 16, marginBottom: 10, borderRadius: 10,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   image: { width: 80, height: 80, borderRadius: 8, marginRight: 10 },
   infoContainer: { flex: 1 },
@@ -145,7 +159,7 @@ const styles = StyleSheet.create({
   totalContainer: {
     flexDirection: 'row', justifyContent: 'space-between',
     paddingTop: 10, borderTopWidth: 1, borderColor: '#e5e7eb',
-    marginHorizontal: 16
+    marginHorizontal: 16,
   },
   totalLabel: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
   totalAmount: { fontSize: 16, fontWeight: 'bold', color: ORANGE },
