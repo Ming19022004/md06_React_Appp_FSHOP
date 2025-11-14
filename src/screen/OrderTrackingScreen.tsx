@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   ScrollView,
-  TouchableOpacity,
   Pressable,
   Modal,
+  StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const PRIMARY = '#0f766e';
@@ -24,26 +25,47 @@ interface OrderItem {
   items: { name: string; purchaseQuantity: number; price: number }[];
 }
 
-const OrderTrackingScreen = ({ navigation }: any) => {
+const statusTabs = [
+  { key: 'waiting', label: 'Chờ xử lý' },
+  { key: 'confirmed', label: 'Đã xác nhận' },
+  { key: 'shipped', label: 'Đang giao hàng' },
+  { key: 'delivered', label: 'Đã nhận hàng' },
+  { key: 'returned', label: 'Trả hàng' },
+  { key: 'cancelled', label: 'Đã huỷ' },
+];
+
+const OrderTrackingScreen = ({ route, navigation }: any) => {
+  const [orders, setOrders] = useState<OrderItem[]>([]);
   const [activeTab, setActiveTab] = useState('waiting');
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
 
-  // Dữ liệu mẫu tạm thời
-  const dummyOrders: OrderItem[] = [
-    {
-      _id: '1',
-      order_code: 'ABC123',
-      finalTotal: 250000,
-      status: 'waiting',
-      createdAt: new Date().toISOString(),
-      paymentMethod: 'cod',
-      shippingAddress: 'Hà Nội',
-      items: [
-        { name: 'Áo thun', purchaseQuantity: 2, price: 120000 },
-        { name: 'Quần jeans', purchaseQuantity: 1, price: 130000 },
-      ],
-    },
-  ];
+  // Load orders từ AsyncStorage
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('orders');
+        if (stored) setOrders(JSON.parse(stored));
+      } catch (err) {
+        console.log('Error loading orders:', err);
+      }
+    };
+    loadOrders();
+  }, []);
+
+  // Nếu có order mới từ CheckoutScreen thì thêm vào danh sách
+  useEffect(() => {
+    if (route.params?.newOrder) {
+      const newOrder: OrderItem = route.params.newOrder;
+      const updatedOrders = [newOrder, ...orders];
+      setOrders(updatedOrders);
+      AsyncStorage.setItem('orders', JSON.stringify(updatedOrders));
+    }
+  }, [route.params?.newOrder]);
+
+  const filteredOrders =
+    activeTab === 'all'
+      ? orders
+      : orders.filter(o => o.status === activeTab);
 
   const renderItem = ({ item }: { item: OrderItem }) => (
     <Pressable onPress={() => setSelectedOrder(item)} style={styles.orderBox}>
@@ -51,7 +73,6 @@ const OrderTrackingScreen = ({ navigation }: any) => {
         <Text style={styles.bold}>
           Mã đơn: #{item.order_code || item._id.slice(-6).toUpperCase()}
         </Text>
-
         {item.items.map((p, idx) => (
           <View key={idx} style={styles.productRow}>
             <View style={styles.productThumb} />
@@ -65,7 +86,6 @@ const OrderTrackingScreen = ({ navigation }: any) => {
             </View>
           </View>
         ))}
-
         <Text style={styles.totalText}>
           Tổng thanh toán: {item.finalTotal.toLocaleString('vi-VN')}đ
         </Text>
@@ -123,11 +143,6 @@ const OrderTrackingScreen = ({ navigation }: any) => {
     );
   };
 
-  const filteredOrders =
-    activeTab === 'all'
-      ? dummyOrders
-      : dummyOrders.filter(o => o.status === activeTab);
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -171,21 +186,13 @@ const OrderTrackingScreen = ({ navigation }: any) => {
           </Text>
         }
       />
+
       {renderModal()}
     </View>
   );
 };
 
 export default OrderTrackingScreen;
-
-const statusTabs = [
-  { key: 'waiting', label: 'Chờ xử lý' },
-  { key: 'confirmed', label: 'Đã xác nhận' },
-  { key: 'shipped', label: 'Đang giao hàng' },
-  { key: 'delivered', label: 'Đã nhận hàng' },
-  { key: 'returned', label: 'Trả hàng' },
-  { key: 'cancelled', label: 'Đã huỷ' },
-];
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#EEEEEE' },
