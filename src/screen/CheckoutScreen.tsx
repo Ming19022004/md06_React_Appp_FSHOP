@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Alert,
+  View, Text, FlatList, StyleSheet, Image, TouchableOpacity, Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,22 +12,13 @@ const ORANGE = '#f97316';
 export default function CheckoutScreen({ route, navigation }: any) {
   const { selectedItems } = route.params;
   const [user, setUser] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState('COD'); 
 
   const fetchUser = useCallback(async () => {
-    try {
-      const id = await AsyncStorage.getItem('userId');
-      if (id) {
-        const res = await API.get(`/users/${id}`);
-        const currentUser = res.data?.user || res.data;
-        setUser(currentUser);
-      } else {
-        const storedProfile = await AsyncStorage.getItem('localUserProfile');
-        if (storedProfile) setUser(JSON.parse(storedProfile));
-      }
-    } catch (err) {
-      const storedProfile = await AsyncStorage.getItem('localUserProfile');
-      if (storedProfile) setUser(JSON.parse(storedProfile));
+    const id = await AsyncStorage.getItem('userId');
+    if (id) {
+      const res = await API.get(`/users/${id}`);
+      setUser(res.data);
     }
   }, []);
 
@@ -41,11 +26,9 @@ export default function CheckoutScreen({ route, navigation }: any) {
     fetchUser();
   }, [fetchUser]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchUser();
-    }, [fetchUser])
-  );
+  useFocusEffect(useCallback(() => {
+    fetchUser();
+  }, []));
 
   const getFinalPrice = (product: any) => {
     if (product.discount_percent && product.discount_percent > 0) {
@@ -57,13 +40,71 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const calculateSubtotal = () => {
     return selectedItems.reduce((sum: number, item: any) => {
       const product = item.product_id || item;
-      return sum + getFinalPrice(product) * (item.quantity || 1);
+      const finalPrice = getFinalPrice(product);
+      return sum + finalPrice * (item.quantity || 1);
     }, 0);
   };
 
-  const subtotal = calculateSubtotal();
-  const shippingFee = 30000;
-  const total = subtotal + shippingFee;
+  const handleConfirmPayment = async () => {
+    if (!user || typeof user.address !== 'string' || user.address.trim().length < 3) {
+      Alert.alert('Chưa có địa chỉ', 'Vui lòng nhập địa chỉ giao hàng hợp lệ.');
+      navigation.navigate('PersonalInfo');
+      return;
+    }
+
+    const subtotal = calculateSubtotal();
+    const shippingFee = 30000;
+    const finalTotal = subtotal + shippingFee;
+
+    const generateOrderCode = () => {
+      const now = new Date();
+      const timestamp = now.getTime().toString().slice(-6);
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      return `ORD-${timestamp}-${random}`;
+    };
+
+    try {
+      const orderPayload: any = {
+        userId: user._id,
+        items: selectedItems.map((item: any) => {
+          const product = item.product_id || item;
+          return {
+            id_product: product._id,
+            name: product.name,
+            purchaseQuantity: item.quantity,
+            price: getFinalPrice(product),
+            size: item.size,
+          };
+        }),
+        totalPrice: finalTotal,
+        shippingFee,
+        finalTotal,
+        paymentMethod: 'cod',             
+        shippingAddress: user.address,
+        status: 'waiting',
+        order_code: generateOrderCode()
+      };
+
+      await API.post('/orders', orderPayload);
+
+      Alert.alert('Thành công', 'Đặt hàng thành công!');
+
+      for (const item of selectedItems) {
+        await API.delete(`/carts/${user._id}/item`, {
+          params: {
+            product_id: item.product_id?._id || item._id,
+            size: item.size,
+            type: item.type,
+          },
+        });
+      }
+
+      navigation.navigate('MainTab');
+    } catch (err: any) {
+      console.error('Lỗi API:', err.response?.data || err.message);
+      Alert.alert('Lỗi', err.response?.data?.message || 'Không thể đặt hàng');
+    }
+  };
 
   const renderProductItem = ({ item }: any) => {
     const product = item.product_id || item;
@@ -71,115 +112,71 @@ export default function CheckoutScreen({ route, navigation }: any) {
       <View style={styles.itemContainer}>
         <Image
           source={{
-            uri: (product.images && product.images[0]) || 'https://via.placeholder.com/150',
+            uri:
+              (product.images && product.images.length > 0 && product.images[0]) ||
+              'https://via.placeholder.com/150',
           }}
           style={styles.image}
         />
-        <View style={styles.infoContainer}>
+        <View style={{ flex: 1 }}>
           <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.detail}>Số lượng: {item.quantity}</Text>
-          <Text style={styles.price}>{getFinalPrice(product).toLocaleString()} đ</Text>
+          <Text>Size: {item.size}</Text>
+          <Text>Số lượng: {item.quantity}</Text>
+          <Text style={styles.price}>
+            {getFinalPrice(product).toLocaleString()} đ
+          </Text>
+          {product.discount_percent > 0 && (
+            <Text style={{ textDecorationLine: 'line-through', color: '#888', fontSize: 12 }}>
+              {product.price.toLocaleString()} đ
+            </Text>
+          )}
         </View>
       </View>
     );
   };
 
-  const handleOrder = async () => {
-    const orderCode = `ORD${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
-    const items = selectedItems.map((it: any) => {
-      const product = it.product_id || it;
-      return {
-        name: product.name || 'Sản phẩm',
-        purchaseQuantity: it.quantity || 1,
-        price: getFinalPrice(product),
-      };
-    });
-
-    const newOrder = {
-      _id: `${Date.now()}`,
-      order_code: orderCode,
-      finalTotal: total,
-      status: 'waiting',
-      createdAt: new Date().toISOString(),
-      paymentMethod: paymentMethod,
-      shippingAddress: user?.address || 'Chưa có địa chỉ',
-      items,
-    };
-
-    try {
-      // Lấy danh sách order cũ
-      const stored = await AsyncStorage.getItem('orders');
-      const oldOrders = stored ? JSON.parse(stored) : [];
-
-      // Thêm order mới
-      const updatedOrders = [newOrder, ...oldOrders];
-      await AsyncStorage.setItem('orders', JSON.stringify(updatedOrders));
-
-      Alert.alert('Thông báo', 'Đặt hàng thành công!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            navigation.navigate('MainTab'); 
-          },
-        },
-      ]);
-    } catch (err) {
-      console.log('Error saving order:', err);
-      Alert.alert('Lỗi', 'Không thể lưu đơn hàng');
-    }
-  };
+  const subtotal = calculateSubtotal();
+  const shippingFee = 30000;
+  const total = subtotal + shippingFee;
 
   return (
     <FlatList
       ListHeaderComponent={
-        <>
-          <View style={styles.container}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Text style={styles.backText}>←</Text>
+        <View style={styles.container}>
+          <Text style={styles.title}>Thanh Toán</Text>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+            <Text>{user?.address || 'Chưa nhập địa chỉ'}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('PersonalInfo')}>
+              <Text style={{ color: PRIMARY, marginTop: 6, fontWeight: '600' }}>
+                Ấn để chỉnh sửa địa chỉ
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Thanh Toán</Text>
           </View>
 
-          <View style={styles.userInfoBox}>
-            <Text style={styles.sectionTitle}>Thông tin người nhận</Text>
-            {user ? (
-              <>
-                <Text style={styles.userText}>Họ tên: {user.name || 'Chưa có'}</Text>
-                <Text style={styles.userText}>SĐT: {user.phone || 'Chưa có'}</Text>
-                <Text style={styles.userText}>Email: {user.email || 'Chưa có'}</Text>
-                <Text style={styles.userText}>Địa chỉ: {user.address || 'Chưa có'}</Text>
-
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('PersonalInfo')}
-                  style={styles.changeBtn}
-                >
-                  <Text style={styles.changeText}>Chỉnh sửa thông tin</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('PersonalInfo')}
-                style={styles.addInfoBtn}
-              >
-                <Text style={styles.addInfoText}>Chưa có thông tin. Cập nhật ngay.</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.paymentBox}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
 
-            <TouchableOpacity style={styles.optionRow} onPress={() => setPaymentMethod('cod')}>
-              <View style={[styles.radioCircle, paymentMethod === 'cod' && styles.radioSelected]} />
-              <Text style={styles.optionText}>Thanh toán khi nhận hàng (COD)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionRow} onPress={() => setPaymentMethod('online')}>
-              <View style={[styles.radioCircle, paymentMethod === 'online' && styles.radioSelected]} />
-              <Text style={styles.optionText}>Thanh toán Online</Text>
-            </TouchableOpacity>
+            {/* 🔥 Vẫn hiển thị cho user CHỌN, nhưng không dùng */}
+            {['COD', 'Online'].map((method) => (
+              <TouchableOpacity
+                key={method}
+                style={[
+                  styles.paymentButton,
+                  paymentMethod === method && styles.selected,
+                ]}
+                onPress={() => setPaymentMethod(method)}
+              >
+                <Text>
+                  {method === 'COD' ? 'Thanh toán khi nhận hàng' : 'Thanh toán Online'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        </>
+
+          <Text style={styles.sectionTitle}>Sản phẩm</Text>
+        </View>
       }
       data={selectedItems}
       renderItem={renderProductItem}
@@ -187,12 +184,22 @@ export default function CheckoutScreen({ route, navigation }: any) {
       ListFooterComponent={
         <View style={styles.footerContainer}>
           <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Tổng tiền:</Text>
+            <Text style={styles.totalLabel}>Tổng gốc:</Text>
+            <Text style={styles.totalAmount}>{subtotal.toLocaleString()} đ</Text>
+          </View>
+
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Phí vận chuyển:</Text>
+            <Text style={styles.totalAmount}>{shippingFee.toLocaleString()} đ</Text>
+          </View>
+
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
             <Text style={styles.totalAmount}>{total.toLocaleString()} đ</Text>
           </View>
 
-          <TouchableOpacity style={styles.orderBtn} onPress={handleOrder}>
-            <Text style={styles.orderBtnText}>Đặt Hàng</Text>
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment}>
+            <Text style={styles.confirmText}>Đặt Hàng</Text>
           </TouchableOpacity>
         </View>
       }
@@ -202,37 +209,46 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { padding: 16, backgroundColor: '#EEEEEE' },
-  backButton: { marginBottom: 10 },
-  backText: { color: PRIMARY, fontWeight: 'bold' },
   title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 16, color: PRIMARY },
 
-  userInfoBox: { backgroundColor: '#fff', marginHorizontal: 16, borderRadius: 10, padding: 14, marginBottom: 12, elevation: 2 },
-  paymentBox: { backgroundColor: '#fff', marginHorizontal: 16, borderRadius: 10, padding: 14, marginBottom: 12, elevation: 2 },
+  section: {
+    marginBottom: 16, backgroundColor: '#fff',
+    borderRadius: 12, padding: 12, elevation: 2,
+  },
 
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6, color: PRIMARY },
-  userText: { fontSize: 14, color: '#333', marginBottom: 4 },
-  changeBtn: { marginTop: 8, alignSelf: 'flex-start' },
-  changeText: { color: ORANGE, fontWeight: 'bold' },
-  addInfoBtn: { marginTop: 4 },
-  addInfoText: { color: ORANGE, fontStyle: 'italic' },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
 
-  optionRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
-  radioCircle: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: PRIMARY, marginRight: 10 },
-  radioSelected: { backgroundColor: PRIMARY },
-  optionText: { fontSize: 14, color: '#333' },
+  itemContainer: {
+    flexDirection: 'row', backgroundColor: '#fff',
+    padding: 12, marginHorizontal: 16, marginBottom: 10, borderRadius: 10,
+    elevation: 2,
+  },
 
-  itemContainer: { flexDirection: 'row', backgroundColor: '#fff', padding: 12, marginHorizontal: 16, marginBottom: 10, borderRadius: 10 },
   image: { width: 80, height: 80, borderRadius: 8, marginRight: 10 },
-  infoContainer: { flex: 1 },
-  name: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
-  detail: { fontSize: 14, color: '#555' },
+  name: { fontSize: 16, fontWeight: 'bold' },
   price: { fontSize: 14, fontWeight: 'bold', color: ORANGE, marginTop: 4 },
 
-  footerContainer: { marginBottom: 40 },
-  totalContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderColor: '#e5e7eb', marginHorizontal: 16 },
-  totalLabel: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
+  paymentButton: {
+    borderWidth: 1, borderColor: '#cbd5e1',
+    padding: 12, borderRadius: 8, marginTop: 10, backgroundColor: '#fff'
+  },
+
+  selected: { borderColor: PRIMARY, backgroundColor: '#ecfdf5' },
+
+  totalContainer: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingTop: 10, marginHorizontal: 16,
+  },
+
+  totalLabel: { fontSize: 16, fontWeight: 'bold' },
   totalAmount: { fontSize: 16, fontWeight: 'bold', color: ORANGE },
 
-  orderBtn: { backgroundColor: PRIMARY, marginTop: 12, marginHorizontal: 16, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  orderBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  confirmButton: {
+    backgroundColor: PRIMARY, margin: 16, padding: 14,
+    borderRadius: 10, alignItems: 'center',
+  },
+
+  confirmText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+
+  footerContainer: { marginBottom: 40 }
 });

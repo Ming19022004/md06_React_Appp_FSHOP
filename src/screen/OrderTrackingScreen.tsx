@@ -1,97 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
-  ScrollView,
-  Pressable,
-  Modal,
   StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
   TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import API from '../api';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const PRIMARY = '#0f766e';
+const ORANGE = '#f97316';
 
-interface OrderItem {
-  _id: string;
-  order_code: string;
-  finalTotal: number;
-  status: string;
-  createdAt: string;
-  paymentMethod: string;
-  shippingAddress: string;
-  items: { name: string; purchaseQuantity: number; price: number }[];
-}
+const OrderTrackingScreen = () => {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-const statusTabs = [
-  { key: 'waiting', label: 'Chờ xử lý' },
-  { key: 'confirmed', label: 'Đã xác nhận' },
-  { key: 'shipped', label: 'Đang giao hàng' },
-  { key: 'delivered', label: 'Đã nhận hàng' },
-  { key: 'returned', label: 'Trả hàng' },
-  { key: 'cancelled', label: 'Đã huỷ' },
-];
+  const fetchOrders = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      const res = await API.get(`/orders/user/${userId}`);
 
-const OrderTrackingScreen = ({ route, navigation }: any) => {
-  const [orders, setOrders] = useState<OrderItem[]>([]);
-  const [activeTab, setActiveTab] = useState('waiting');
-  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+      setOrders(res.data.data || []);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Load orders từ AsyncStorage
   useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('orders');
-        if (stored) setOrders(JSON.parse(stored));
-      } catch (err) {
-        console.log('Error loading orders:', err);
-      }
-    };
-    loadOrders();
+    fetchOrders();
   }, []);
 
-  // Nếu có order mới từ CheckoutScreen thì thêm vào danh sách
-  useEffect(() => {
-    if (route.params?.newOrder) {
-      const newOrder: OrderItem = route.params.newOrder;
-      const updatedOrders = [newOrder, ...orders];
-      setOrders(updatedOrders);
-      AsyncStorage.setItem('orders', JSON.stringify(updatedOrders));
-    }
-  }, [route.params?.newOrder]);
+  const renderItem = ({ item }: any) => {
+    return (
+      <Pressable onPress={() => setSelectedOrder(item)} style={styles.orderBox}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bold}>
+            Mã đơn: #{item.order_code || item._id.slice(-6).toUpperCase()}
+          </Text>
 
-  const filteredOrders =
-    activeTab === 'all'
-      ? orders
-      : orders.filter(o => o.status === activeTab);
+          {item.items.map((product: any, idx: number) => (
+            <View key={idx} style={styles.productRow}>
+              <Image
+                source={{
+                  uri:
+                    product.productDetails?.images?.[0] ||
+                    product.id_product?.images?.[0] ||
+                    'https://via.placeholder.com/80',
+                }}
+                style={styles.image}
+              />
 
-  const renderItem = ({ item }: { item: OrderItem }) => (
-    <Pressable onPress={() => setSelectedOrder(item)} style={styles.orderBox}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.bold}>
-          Mã đơn: #{item.order_code || item._id.slice(-6).toUpperCase()}
-        </Text>
-        {item.items.map((p, idx) => (
-          <View key={idx} style={styles.productRow}>
-            <View style={styles.productThumb} />
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={2} style={styles.productName}>
-                {p.name} x{p.purchaseQuantity}
-              </Text>
-              <Text style={styles.productPrice}>
-                {p.price.toLocaleString('vi-VN')}đ
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text numberOfLines={2} style={styles.productName}>
+                  {product.name} x{product.purchaseQuantity}
+                </Text>
+                <Text style={styles.productPrice}>
+                  {product.price.toLocaleString('vi-VN')}đ
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
-        <Text style={styles.totalText}>
-          Tổng thanh toán: {item.finalTotal.toLocaleString('vi-VN')}đ
-        </Text>
-      </View>
-    </Pressable>
-  );
+          ))}
+
+          <Text style={styles.totalText}>
+            Tổng thanh toán: {item.finalTotal.toLocaleString('vi-VN')}đ
+          </Text>
+        </View>
+      </Pressable>
+    );
+  };
 
   const renderModal = () => {
     if (!selectedOrder) return null;
@@ -99,42 +85,48 @@ const OrderTrackingScreen = ({ route, navigation }: any) => {
     return (
       <Modal
         animationType="slide"
-        transparent
+        transparent={true}
         visible={!!selectedOrder}
-        onRequestClose={() => setSelectedOrder(null)}>
+        onRequestClose={() => setSelectedOrder(null)}
+      >
         <View style={styles.modalBackground}>
           <View style={styles.modalContent}>
             <ScrollView>
               <Text style={styles.modalTitle}>Chi tiết đơn hàng</Text>
+
               <Text style={styles.modalLabel}>
-                Mã đơn: #{selectedOrder.order_code}
+                Mã đơn: #{selectedOrder.order_code || selectedOrder._id}
               </Text>
+
               <Text style={styles.modalLabel}>
-                Trạng thái: {selectedOrder.status}
+                Trạng thái: {selectedOrder.status.toUpperCase()}
               </Text>
+
               <Text style={styles.modalLabel}>
                 Ngày đặt: {new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}
               </Text>
+
               <Text style={styles.modalLabel}>
                 Địa chỉ giao: {selectedOrder.shippingAddress}
               </Text>
+
               <Text style={styles.modalLabel}>
                 Thanh toán: {selectedOrder.paymentMethod.toUpperCase()}
               </Text>
+
               <Text style={styles.modalLabel}>
                 Tổng tiền: {selectedOrder.finalTotal.toLocaleString('vi-VN')}đ
               </Text>
+
               <Text style={[styles.modalLabel, { marginTop: 10 }]}>Sản phẩm:</Text>
-              {selectedOrder.items.map((i, idx) => (
+              {selectedOrder.items.map((item: any, idx: number) => (
                 <Text key={idx} style={styles.productItem}>
-                  • {i.name} x{i.purchaseQuantity}
+                  • {item.name} x{item.purchaseQuantity}
                 </Text>
               ))}
             </ScrollView>
 
-            <Pressable
-              onPress={() => setSelectedOrder(null)}
-              style={styles.closeBtn}>
+            <Pressable onPress={() => setSelectedOrder(null)} style={styles.closeBtn}>
               <Text style={{ color: '#fff', fontWeight: '600' }}>Đóng</Text>
             </Pressable>
           </View>
@@ -143,46 +135,23 @@ const OrderTrackingScreen = ({ route, navigation }: any) => {
     );
   };
 
+  if (loading)
+    return <ActivityIndicator style={{ marginTop: 40 }} size="large" color={PRIMARY} />;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backIcon}>
-          <Icon name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Theo dõi đơn hàng</Text>
-      </View>
-
-      <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {statusTabs.map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tabItem,
-                activeTab === tab.key && styles.tabItemActive,
-              ]}
-              onPress={() => setActiveTab(tab.key)}>
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab.key && styles.tabTextActive,
-                ]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <Text style={styles.headerTitle}>Đơn hàng của bạn</Text>
       </View>
 
       <FlatList
-        data={filteredOrders}
-        keyExtractor={item => item._id}
+        data={orders}
+        removeClippedSubviews={false}
+        keyExtractor={(item) => item._id}
         renderItem={renderItem}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', marginTop: 24 }}>
-            Không có đơn hàng nào.
+            Bạn chưa có đơn hàng nào.
           </Text>
         }
       />
@@ -194,71 +163,112 @@ const OrderTrackingScreen = ({ route, navigation }: any) => {
 
 export default OrderTrackingScreen;
 
+// ============== STYLES ==============
+
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#EEEEEE' },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#EEEEEE',
+  },
+
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     height: 56,
-    marginBottom: 10,
-    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: PRIMARY,
+    marginBottom: 16,
+    borderRadius: 10,
   },
-  backIcon: { position: 'absolute', left: 0, paddingHorizontal: 10 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  tabContainer: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
+
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
   },
-  tabItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginRight: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabItemActive: { borderBottomColor: PRIMARY },
-  tabText: { fontSize: 14, color: '#374151', fontWeight: '500' },
-  tabTextActive: { color: PRIMARY, fontWeight: '700' },
+
   orderBox: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 12,
-    alignItems: 'center',
     elevation: 2,
   },
-  bold: { fontWeight: '700', fontSize: 15, marginBottom: 4, color: '#111827' },
-  productRow: { flexDirection: 'row', alignItems: 'flex-start', marginVertical: 8 },
-  productThumb: {
-    width: 50,
-    height: 50,
-    borderRadius: 6,
-    marginRight: 10,
-    backgroundColor: '#eee',
+
+  bold: {
+    fontWeight: '700',
+    fontSize: 15,
+    marginBottom: 8,
+    color: '#111827',
   },
-  productName: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  productPrice: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  totalText: { fontWeight: '600', fontSize: 15 },
+
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginVertical: 8,
+  },
+
+  image: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    marginRight: 14,
+  },
+
+  productName: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+  },
+
+  productPrice: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+
+  totalText: {
+    fontWeight: '600',
+    fontSize: 15,
+    marginTop: 10,
+    color: ORANGE,
+  },
+
   modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     padding: 20,
   },
+
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 20,
     maxHeight: '80%',
   },
-  modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 10, textAlign: 'center', color: PRIMARY },
-  modalLabel: { fontSize: 14, marginBottom: 6, color: '#333' },
-  productItem: { fontSize: 13, marginLeft: 8, marginTop: 2, color: '#555' },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 10,
+    textAlign: 'center',
+    color: PRIMARY,
+  },
+
+  modalLabel: {
+    fontSize: 14,
+    marginBottom: 6,
+    color: '#333',
+  },
+
+  productItem: {
+    fontSize: 13,
+    marginLeft: 8,
+    marginTop: 2,
+    color: '#555',
+  },
+
   closeBtn: {
     backgroundColor: PRIMARY,
     marginTop: 16,
