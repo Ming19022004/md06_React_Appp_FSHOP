@@ -112,7 +112,7 @@ export default function LoginScreen({ navigation }: any) {
     return (
         <View style={styles.container}>
             <Image
-                source={require('../assets/images/banner1.png')}
+                source={require('../assets/images/banner02.png')}
                 style={styles.image}
                 resizeMode="cover"
             />
@@ -182,7 +182,7 @@ export default function LoginScreen({ navigation }: any) {
                 <Text style={styles.signupText}>
                     Bạn không có tài khoản?{' '}
                     <Text style={{ color: '#ff6600', fontWeight: 'bold' }} onPress={handleDK}>
-                        tạo tài khoản
+                        Tạo tài khoản
                     </Text>
                 </Text>
             </View>
