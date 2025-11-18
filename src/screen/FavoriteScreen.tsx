@@ -27,7 +27,6 @@ const FavoriteScreen = ({ navigation }: any) => {
         setFavoriteItems([]);
         return;
       }
-
       const res = await API.get(`/favorites/${userId}`);
       const data = res.data;
 
