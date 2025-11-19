@@ -17,7 +17,6 @@ import SaleProductCard from "./productCard/SaleProductCard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../api";
 import { fetchAllProducts } from "../services/ProductServices";
-import { fetchSaleProducts } from "../services/SaleProduct";
 import { fetchBanners } from "../services/BannerServices";
 import { fetchCategories } from "../services/CategoryServices";
 
@@ -49,7 +48,6 @@ const HomeScreen = ({ navigation }: any) => {
           fetchBanners(),
           fetchCategories(),
           fetchAllProducts(),
-//           fetchSaleProducts(),
         ]);
 
       setBanners(bannerData);
@@ -102,7 +100,7 @@ const HomeScreen = ({ navigation }: any) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <TouchableOpacity style={styles.header}>
+<TouchableOpacity style={styles.header}>
         <Text style={styles.text}>Sports Shop</Text>
       </TouchableOpacity>
 
@@ -158,7 +156,6 @@ const HomeScreen = ({ navigation }: any) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ backgroundColor: "#EEEEEE" }}
       >
-
         {/* Banners */}
         <ScrollView
           ref={scrollRef}
@@ -190,12 +187,13 @@ const HomeScreen = ({ navigation }: any) => {
             />
           ))}
         </View>
+
         {/* Danh mục */}
         <Section title="Danh mục">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
+contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
           >
             <View style={styles.categoryRow}>
               {categories.map((cat, index) => (
@@ -209,42 +207,19 @@ const HomeScreen = ({ navigation }: any) => {
                     })
                   }
                 >
-                {/*
                   <Image
                     source={{ uri: cat.image }}
                     style={styles.categoryImage}
                   />
-                  */}
-                      <Text style={styles.categoryText} numberOfLines={1}>
-                        {cat.name}
-                      </Text>
+                  <Text style={styles.categoryName} numberOfLines={1}>
+                    {cat.name}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
         </Section>
 
-        {/* Khuyến mãi */}
-        {/*
-        <View>
-          <FlatList
-            data={saleProducts.slice(0, 4)}
-            keyExtractor={(item, index) => item._id || `sale-${index}`}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: "space-between" }}
-            contentContainerStyle={{
-              paddingHorizontal: HORIZONTAL_PADDING,
-              paddingTop: 4,
-            }}
-            renderItem={({ item }) => (
-              <View style={styles.gridItem}>
-                <SaleProductCard item={item} navigation={navigation} />
-              </View>
-            )}
-            scrollEnabled={false}
-          />
-        </View>
-    */}
         {/* Tất cả sản phẩm */}
         <Section title="Tất cả sản phẩm">
           <FlatList
@@ -325,7 +300,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#ccc",
+backgroundColor: "#ccc",
     marginHorizontal: 4,
   },
   activeDot: { backgroundColor: "#000" },
@@ -350,40 +325,32 @@ const styles = StyleSheet.create({
     marginBottom: GRID_GAP,
   },
   categoryRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  categoryItem: {
-    backgroundColor: "#eee",
-    borderRadius: 50,
-    width: 90,
-    height: 90,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    margin: 10,
-  },
-  categoryImage: {
-    width: "100%",
-    height: "100%",
-  },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    textAlign: "center",
-    marginTop: 4,
-    paddingHorizontal: 4,
-  },
-  categoryItem: {
-    backgroundColor: "#eee",
-    borderRadius: 50,
-    width: 90,
-    height: 90,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    margin: 10,
-    paddingHorizontal: 4,
-  }
+  flexDirection: "row",
+  gap: 12,
+  paddingHorizontal: HORIZONTAL_PADDING,
+},
+categoryItem: {
+  backgroundColor: "#eee",
+  borderRadius: 10, 
+  width: 80,         
+  height: 80,
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  marginVertical: 10,
+  marginRight: 12,
+},
+categoryImage: {
+  width: 60,   
+  height: 60,
+  borderRadius: 30, 
+  resizeMode: "cover",
+},
+categoryName: {
+  fontSize: 12,
+  marginTop: 4,
+  textAlign: "center",
+  width: 80,    
+},
+
 });

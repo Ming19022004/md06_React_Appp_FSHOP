@@ -141,14 +141,15 @@ export default function CartScreen({ navigation }: any) {
             if (type === 'sale') {
               productRes = await API.get(`/sale-products/${productId}`);
             } else {
-              productRes = await API.get(`/products/${productId}/detail`);
+              productRes = await API.get(`/products/${productId}`);
             }
   
-            const product =
-              type === 'sale'
-                ? productRes.data.data
-                : productRes.data.product;
-  
+            // const product =
+            //   type === 'sale'
+            //     ? productRes.data.data
+            //     : productRes.data.product;
+            const product = productRes.data.data;
+    
             return {
               ...item,
               product_id: product,
@@ -196,7 +197,8 @@ export default function CartScreen({ navigation }: any) {
         type,
       });      
       if(response.data.success == false) {
-        Alert.alert('Số lượng trong kho không đủ');
+        // Alert.alert('Số lượng trong kho không đủ');
+        Alert.alert(response.data.message || "Cap nhat that bai");
         return;
       }
       await fetchCart(userId);
