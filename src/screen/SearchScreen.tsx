@@ -1,48 +1,133 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
-import { useState } from "react";
+// src/screens/SearchScreen.tsx
+import React, { useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    TextInput,
+    Modal,
+    FlatList,
+    Dimensions
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import ProductCard from './productCard/ProductCard';
 
 const { width } = Dimensions.get('window');
+const PRIMARY = '#0f766e';
+const HORIZONTAL_PADDING = 12;
+const GRID_GAP = 12;
+const CARD_WIDTH = (width - (HORIZONTAL_PADDING * 2) - GRID_GAP) / 2;
+
+// Mock data (chưa có backend)
+const MOCK_PRODUCTS = [
+    { id: "1", name: "Áo Thun Nam", price: 150000, images: [] },
+    { id: "2", name: "Áo Thể Thao", price: 350000, images: [] },
+    { id: "3", name: "Áo POLO", price: 250000, images: [] },
+    { id: "4", name: "Áo Khoác Hoodie", price: 450000, images: [] },
+];
 
 const SearchScreen = ({ navigation }: any) => {
+    const [searchText, setSearchText] = useState('');
+    const [results, setResults] = useState(MOCK_PRODUCTS);
+    const [showRangeModal, setShowRangeModal] = useState(false);
+    const [selectedRangeLabel, setSelectedRangeLabel] = useState('Chọn khoảng giá');
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
 
-    const [selected, setSelected] = useState('home');
+    const handleSearch = (text: string) => {
+        setSearchText(text);
 
-    const handlePress = (screen: 'home' | 'search' | 'heart' | 'user') => {
-        setSelected(screen);
-        if (screen === 'home') {
-            navigation.navigate('Home');
-        } else if (screen === 'search') {
-            navigation.navigate('Search');
-        } else if (screen === 'heart') {
-            navigation.navigate('Favorites');
-        } else if (screen === 'user') {
-            navigation.navigate('Account');
-        }
+        const filtered = MOCK_PRODUCTS.filter(
+            p => p.name.toLowerCase().includes(text.toLowerCase())
+        );
+
+        setResults(filtered);
     };
+
+    const renderGridItem = ({ item }: { item: any }) => (
+        <View style={styles.gridItem}>
+            <ProductCard item={item} navigation={navigation} />
+        </View>
+    );
+
+    const priceRanges = [
+        { label: 'Dưới 100.000đ', min: 0, max: 100000 },
+        { label: '100.000đ - 300.000đ', min: 100000, max: 300000 },
+        { label: '300.000đ - 500.000đ', min: 300000, max: 500000 },
+        { label: 'Trên 500.000đ', min: 500000, max: 9999999999 },
+        { label: 'Tất cả', min: 0, max: 9999999999 },
+    ];
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Text style={styles.backText}>Back</Text> {/* Thay thế icon bằng text */}
-                <Text style={styles.title1}>Màn Search</Text>
-            </TouchableOpacity>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
+                    <Icon name="chevron-back" size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Tìm kiếm sản phẩm</Text>
+            </View>
 
-            {/* Bottom Nav */}
-            <View style={styles.bottomNav}>
-                <TouchableOpacity onPress={() => handlePress('home')}>
-                    <Text style={selected === 'home' ? styles.selectedText : styles.unselectedText}>Home</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('search')}>
-                    <Text style={selected === 'search' ? styles.selectedText : styles.unselectedText}>Search</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('heart')}>
-                    <Text style={selected === 'heart' ? styles.selectedText : styles.unselectedText}>Favorites</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePress('user')}>
-                    <Text style={selected === 'user' ? styles.selectedText : styles.unselectedText}>Account</Text>
+            {/* Search input */}
+            <View style={styles.searchContainer}>
+                <Icon name="search-outline" size={20} color={PRIMARY} />
+                <TextInput
+                    placeholder="Tìm kiếm sản phẩm ..."
+                    style={styles.searchInput}
+                    value={searchText}
+                    onChangeText={handleSearch}
+                />
+                <TouchableOpacity onPress={() => setShowRangeModal(true)}>
+                    <Icon name="options-outline" size={20} color={PRIMARY} />
                 </TouchableOpacity>
             </View>
+
+            {/* Price filter chip */}
+            <View style={styles.priceFilterRow}>
+                <TouchableOpacity style={styles.chip} onPress={() => setShowRangeModal(true)}>
+                    <Icon name="pricetags-outline" size={16} color={PRIMARY} />
+                    <Text style={styles.chipText}>{selectedRangeLabel}</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Modal chọn khoảng giá */}
+            <Modal visible={showRangeModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {priceRanges.map((range, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={styles.modalItem}
+                                onPress={() => {
+                                    setSelectedRangeLabel(range.label);
+                                    setMinPrice(range.min + '');
+                                    setMaxPrice(range.max + '');
+                                    setResults(
+                                        MOCK_PRODUCTS.filter(
+                                            p => p.price >= range.min && p.price <= range.max
+                                        )
+                                    );
+                                    setShowRangeModal(false);
+                                }}
+                            >
+                                <Text style={styles.modalItemText}>{range.label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Grid */}
+            <FlatList
+                data={results}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                renderItem={renderGridItem}
+                columnWrapperStyle={{ justifyContent: 'space-between' }}
+                contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
+                ListEmptyComponent={<Text style={styles.noResults}>Không có sản phẩm</Text>}
+            />
         </View>
     );
 };
@@ -50,44 +135,61 @@ const SearchScreen = ({ navigation }: any) => {
 export default SearchScreen;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
+    container: { flex: 1, backgroundColor: '#EEEEEE' },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        padding: 12,
+        backgroundColor: PRIMARY,
     },
-    backButton: {
+    backIcon: { position: 'absolute', left: 0, paddingLeft: 10 },
+    headerTitle: { fontSize: 20, color: '#fff', fontWeight: 'bold' },
+    searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        marginTop: 10,
+        borderWidth: 1,
+        borderColor: PRIMARY,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        margin: 16,
+        backgroundColor: '#eef8f6',
     },
-    backText: {
-        fontSize: 18,
-        color: '#000',
-    },
-    title1: {
-        fontSize: 20,
-        marginLeft: 70,
-    },
-    bottomNav: {
+    searchInput: { flex: 1, fontSize: 15, marginLeft: 8 },
+    priceFilterRow: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 10,
-        position: 'absolute',
-        bottom: 10,
-        left: 20,
-        right: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
+        marginHorizontal: 16,
+        marginBottom: 10,
     },
-    selectedText: {
-        fontSize: 18,
-        color: '#000', // Màu sắc khi chọn
+    chip: {
+        flexDirection: 'row',
+        paddingHorizontal: 12,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: PRIMARY,
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#eef8f6',
     },
-    unselectedText: {
-        fontSize: 18,
-        color: '#888', // Màu sắc khi không chọn
+    chipText: { color: PRIMARY, fontWeight: '600' },
+    gridItem: { width: CARD_WIDTH, marginBottom: GRID_GAP },
+    noResults: { textAlign: 'center', marginTop: 20, color: '#888' },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
+    modalContent: {
+        backgroundColor: '#fff',
+        width: '80%',
+        borderRadius: 10,
+        padding: 10,
+    },
+    modalItem: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderColor: '#eee',
+    },
+    modalItemText: { fontSize: 16, textAlign: 'center' },
 });
