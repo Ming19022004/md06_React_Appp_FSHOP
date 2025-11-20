@@ -99,7 +99,10 @@ const HomeScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <TouchableOpacity style={styles.header}>
+        <Text style={styles.text}>COOLMATE</Text>
+      </TouchableOpacity>
+      {/* Header 
 <TouchableOpacity style={styles.header}>
         <Text style={styles.text}>Sports Shop</Text>
       </TouchableOpacity>

@@ -19,7 +19,7 @@ const HORIZONTAL_PADDING = 12;
 const GRID_GAP = 12;
 const CARD_WIDTH = (width - (HORIZONTAL_PADDING * 2) - GRID_GAP) / 2;
 
-// Mock data (chưa có backend)
+// Mock data
 const MOCK_PRODUCTS = [
     { id: "1", name: "Áo Thun Nam", price: 150000, images: [] },
     { id: "2", name: "Áo Thể Thao", price: 350000, images: [] },
@@ -37,11 +37,16 @@ const SearchScreen = ({ navigation }: any) => {
 
     const handleSearch = (text: string) => {
         setSearchText(text);
-
         const filtered = MOCK_PRODUCTS.filter(
             p => p.name.toLowerCase().includes(text.toLowerCase())
         );
+        setResults(filtered);
+    };
 
+    const handleFilterPrice = (min: number, max: number) => {
+        const filtered = MOCK_PRODUCTS.filter(
+            p => p.price >= min && p.price <= max
+        );
         setResults(filtered);
     };
 
@@ -91,7 +96,7 @@ const SearchScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
             </View>
 
-            {/* Modal chọn khoảng giá */}
+            {/* Price modal */}
             <Modal visible={showRangeModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -103,11 +108,7 @@ const SearchScreen = ({ navigation }: any) => {
                                     setSelectedRangeLabel(range.label);
                                     setMinPrice(range.min + '');
                                     setMaxPrice(range.max + '');
-                                    setResults(
-                                        MOCK_PRODUCTS.filter(
-                                            p => p.price >= range.min && p.price <= range.max
-                                        )
-                                    );
+                                    handleFilterPrice(range.min, range.max);
                                     setShowRangeModal(false);
                                 }}
                             >
@@ -118,7 +119,7 @@ const SearchScreen = ({ navigation }: any) => {
                 </View>
             </Modal>
 
-            {/* Grid */}
+            {/* Product grid */}
             <FlatList
                 data={results}
                 keyExtractor={(item) => item.id}
@@ -168,10 +169,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: PRIMARY,
         alignItems: 'center',
-        gap: 6,
         backgroundColor: '#eef8f6',
     },
-    chipText: { color: PRIMARY, fontWeight: '600' },
+    chipText: { color: PRIMARY, fontWeight: '600', marginLeft: 6 },
     gridItem: { width: CARD_WIDTH, marginBottom: GRID_GAP },
     noResults: { textAlign: 'center', marginTop: 20, color: '#888' },
     modalOverlay: {

@@ -105,7 +105,7 @@ const AccountScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Sports Shop</Text>
+      <Text style={styles.header}>COOlMATE</Text>
 
       {menuItems.map((m) => (
         <TouchableOpacity
