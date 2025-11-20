@@ -1,5 +1,5 @@
-// src/screens/SearchScreen.tsx
-import React, { useState } from 'react';
+// src/screen/SearchScreen.tsx
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -19,7 +19,6 @@ const HORIZONTAL_PADDING = 12;
 const GRID_GAP = 12;
 const CARD_WIDTH = (width - (HORIZONTAL_PADDING * 2) - GRID_GAP) / 2;
 
-// Mock data
 const MOCK_PRODUCTS = [
     { id: "1", name: "Áo Thun Nam", price: 150000, images: [] },
     { id: "2", name: "Áo Thể Thao", price: 350000, images: [] },
@@ -35,12 +34,21 @@ const SearchScreen = ({ navigation }: any) => {
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
 
+    // Ref để lưu timeout debounce
+    const typingTimeoutRef = useRef<number | null>(null);
+
+    // Debounce search
     const handleSearch = (text: string) => {
         setSearchText(text);
-        const filtered = MOCK_PRODUCTS.filter(
-            p => p.name.toLowerCase().includes(text.toLowerCase())
-        );
-        setResults(filtered);
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+        typingTimeoutRef.current = setTimeout(() => {
+            const filtered = MOCK_PRODUCTS.filter(
+                p => p.name.toLowerCase().includes(text.toLowerCase())
+            );
+            setResults(filtered);
+        }, 500) as unknown as number;
     };
 
     const handleFilterPrice = (min: number, max: number) => {
