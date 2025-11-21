@@ -18,8 +18,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 const PRIMARY = '#0f766e';
 const PRIMARY_DARK = '#065f57';
 const ORANGE = '#f97316';
-const RED = '#ef4444';
 const GREEN = '#10b981';
+const RED = '#ef4444';
 const LIGHT_BG = '#f8faf9';
 const BORDER_COLOR = '#e8f0ed';
 
@@ -27,8 +27,6 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const { selectedItems } = route.params;
   const [user, setUser] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState('COD');
-
-  // Voucher states
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherLoading, setVoucherLoading] = useState(false);
@@ -65,7 +63,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     }, 0);
   };
 
-  // --- Apply / Remove Voucher ---
+  // --- Voucher logic ---
   const applyVoucher = async () => {
     if (!voucherCode.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập mã voucher');
@@ -90,7 +88,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     setAppliedVoucher(null);
     setVoucherCode('');
   };
-  // --------------------------------
+  // -------------------
 
   const handleConfirmPayment = async () => {
     if (
@@ -167,6 +165,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     const finalPrice = getFinalPrice(product);
     const hasDiscount =
       product.discount_percent && product.discount_percent > 0;
+
     return (
       <View style={styles.itemContainer}>
         <Image
@@ -223,7 +222,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
           <Icon name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thanh Toán</Text>
-        <View style={styles.placeholder} />
+        <View style={{ width: 44 }} />
       </View>
 
       <FlatList
@@ -254,6 +253,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
                 <Icon name="ticket-outline" size={20} color={PRIMARY} />
                 <Text style={styles.sectionTitle}>Voucher</Text>
               </View>
+
               {appliedVoucher ? (
                 <View style={styles.appliedVoucher}>
                   <View style={styles.voucherInfo}>
@@ -310,7 +310,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
               )}
             </View>
 
-            {/* Phương thức thanh toán */}
+            {/* Thanh toán */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="card-outline" size={20} color={PRIMARY} />
@@ -346,7 +346,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
               ))}
             </View>
 
-            {/* Danh sách sản phẩm */}
+            {/* Sản phẩm */}
             <View style={styles.sectionHeader}>
               <Icon name="bag-outline" size={20} color={PRIMARY} />
               <Text style={styles.sectionTitle}>
@@ -368,12 +368,14 @@ export default function CheckoutScreen({ route, navigation }: any) {
                   {subtotal.toLocaleString()} đ
                 </Text>
               </View>
+
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Phí vận chuyển:</Text>
                 <Text style={styles.totalAmount}>
                   {shippingFee.toLocaleString()} đ
                 </Text>
               </View>
+
               {appliedVoucher && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Giảm giá voucher:</Text>
@@ -382,6 +384,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
                   </Text>
                 </View>
               )}
+
               <View style={[styles.totalRow, styles.finalTotal]}>
                 <Text style={styles.finalLabel}>Tổng thanh toán:</Text>
                 <Text style={styles.finalAmount}>
@@ -423,7 +426,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  placeholder: { width: 44 },
   container: { padding: 16 },
   section: {
     marginBottom: 16,
@@ -497,31 +499,6 @@ const styles = StyleSheet.create({
     backgroundColor: PRIMARY,
   },
   paymentText: { fontSize: 14, fontWeight: '600' },
-  divider: { height: 1, backgroundColor: BORDER_COLOR, marginBottom: 16 },
-  footerContainer: { backgroundColor: '#fff', padding: 16 },
-  totalSection: { marginBottom: 18 },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER_COLOR,
-  },
-  finalTotal: { borderBottomWidth: 0, paddingVertical: 14 },
-  totalLabel: { fontSize: 14, fontWeight: '600' },
-  finalLabel: { fontSize: 16, fontWeight: '700' },
-  totalAmount: { fontSize: 14, fontWeight: '700', color: ORANGE },
-  finalAmount: { fontSize: 18, fontWeight: '700', color: ORANGE },
-  confirmButton: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-
   appliedVoucher: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -567,4 +544,33 @@ const styles = StyleSheet.create({
   },
   applyButtonDisabled: { backgroundColor: '#ccc' },
   applyButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  divider: {
+    height: 1,
+    backgroundColor: BORDER_COLOR,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  footerContainer: { backgroundColor: '#fff', padding: 16 },
+  totalSection: { marginBottom: 18 },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+  },
+  finalTotal: { borderBottomWidth: 0, paddingVertical: 14 },
+  totalLabel: { fontSize: 14, fontWeight: '600' },
+  finalLabel: { fontSize: 16, fontWeight: '700' },
+  totalAmount: { fontSize: 14, fontWeight: '700', color: ORANGE },
+  finalAmount: { fontSize: 18, fontWeight: '700', color: ORANGE },
+  confirmButton: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
