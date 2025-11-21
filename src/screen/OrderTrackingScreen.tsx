@@ -1,5 +1,7 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import {
+  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
   Pressable,
   ScrollView,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../api';
@@ -296,10 +299,12 @@ const OrderTrackingScreen = () => {
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} size="large" color={PRIMARY} />;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#fff" />
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
-          <Icon name="chevron-back" size={24} color="#fff" />
+          <Icon name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Theo dõi đơn hàng</Text>
       </View>
@@ -333,12 +338,16 @@ const OrderTrackingScreen = () => {
         removeClippedSubviews={false}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 120 }}
         ListEmptyComponent={
-          <Text style={{ textAlign: 'center', marginTop: 24 }}>Không có đơn hàng nào.</Text>
+          <View style={styles.emptyList}>
+            <Text style={styles.emptyText}>Không có đơn hàng nào.</Text>
+          </View>
         }
       />
+
       {isFocused && renderModal()}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -393,23 +402,25 @@ const formatDate = (str: string) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#EEEEEE',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: '#F8FAFB',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
-    marginBottom: 10,
+    height: 52,
+    marginBottom: 12,
     position: 'relative',
     backgroundColor: PRIMARY,
+    borderRadius: 8,
   },
 
   backIcon: {
     position: 'absolute',
-    left: 0,
-    paddingHorizontal: 10,
+    left: 12,
+    padding: 8,
   },
 
   headerTitle: {
@@ -426,12 +437,11 @@ const styles = StyleSheet.create({
     color: PRIMARY,
   },
   orderBox: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 12,
-    alignItems: 'center',
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.06,
@@ -439,17 +449,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   image: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    marginRight: 14,
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    marginRight: 12,
   },
+  orderHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   bold: {
     fontWeight: '700',
     fontSize: 15,
     marginBottom: 4,
     color: '#111827',
   },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, color: '#fff', fontWeight: '700' },
   modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -490,36 +502,37 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     marginBottom: 10,
-    borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
+    paddingHorizontal: 4,
   },
   tabItem: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 14,
-    marginRight: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    borderRadius: 8,
+    marginRight: 10,
+    borderRadius: 20,
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#f1f5f9'
   },
   tabItemActive: {
-    borderBottomColor: PRIMARY,
     backgroundColor: '#e6f6f2',
+    borderColor: PRIMARY,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#374151',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   tabTextActive: {
     color: PRIMARY,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginVertical: 8,
   },
+  emptyList: { padding: 24, alignItems: 'center' },
+  emptyText: { color: '#64748b' },
   productThumb: {
     width: 50,
     height: 50,
