@@ -18,8 +18,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 const PRIMARY = '#0f766e';
 const PRIMARY_DARK = '#065f57';
 const ORANGE = '#f97316';
-const GREEN = '#10b981';
 const RED = '#ef4444';
+const GREEN = '#10b981';
 const LIGHT_BG = '#f8faf9';
 const BORDER_COLOR = '#e8f0ed';
 
@@ -42,6 +42,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
   useFocusEffect(
     useCallback(() => {
       fetchUser();
@@ -63,12 +64,12 @@ export default function CheckoutScreen({ route, navigation }: any) {
     }, 0);
   };
 
-  // --- Voucher logic ---
   const applyVoucher = async () => {
     if (!voucherCode.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập mã voucher');
       return;
     }
+
     try {
       setVoucherLoading(true);
       const res = await API.get(`/vouchers/code/${voucherCode}`);
@@ -88,7 +89,6 @@ export default function CheckoutScreen({ route, navigation }: any) {
     setAppliedVoucher(null);
     setVoucherCode('');
   };
-  // -------------------
 
   const handleConfirmPayment = async () => {
     if (
@@ -103,9 +103,12 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
     const subtotal = calculateSubtotal();
     const shippingFee = 30000;
-    const voucherDiscount = appliedVoucher
-      ? (subtotal * appliedVoucher.discount_percent) / 100
-      : 0;
+    let voucherDiscount = 0;
+
+    if (appliedVoucher) {
+      voucherDiscount = (subtotal * appliedVoucher.discount_percent) / 100;
+    }
+
     const finalTotal = subtotal + shippingFee - voucherDiscount;
 
     const generateOrderCode = () => {
@@ -165,13 +168,14 @@ export default function CheckoutScreen({ route, navigation }: any) {
     const finalPrice = getFinalPrice(product);
     const hasDiscount =
       product.discount_percent && product.discount_percent > 0;
-
     return (
       <View style={styles.itemContainer}>
         <Image
           source={{
             uri:
-              (product.images && product.images[0]) ||
+              (product.images &&
+                product.images.length > 0 &&
+                product.images[0]) ||
               'https://via.placeholder.com/150',
           }}
           style={styles.image}
@@ -206,9 +210,10 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
   const subtotal = calculateSubtotal();
   const shippingFee = 30000;
-  const voucherDiscount = appliedVoucher
-    ? (subtotal * appliedVoucher.discount_percent) / 100
-    : 0;
+  let voucherDiscount = 0;
+  if (appliedVoucher) {
+    voucherDiscount = (subtotal * appliedVoucher.discount_percent) / 100;
+  }
   const total = subtotal + shippingFee - voucherDiscount;
 
   return (
@@ -222,13 +227,12 @@ export default function CheckoutScreen({ route, navigation }: any) {
           <Icon name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thanh Toán</Text>
-        <View style={{ width: 44 }} />
+        <View style={styles.placeholder} />
       </View>
 
       <FlatList
         ListHeaderComponent={
           <View style={styles.container}>
-            {/* Địa chỉ */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="location-outline" size={20} color={PRIMARY} />
@@ -247,7 +251,6 @@ export default function CheckoutScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* Voucher */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="ticket-outline" size={20} color={PRIMARY} />
@@ -310,12 +313,12 @@ export default function CheckoutScreen({ route, navigation }: any) {
               )}
             </View>
 
-            {/* Thanh toán */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="card-outline" size={20} color={PRIMARY} />
                 <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
               </View>
+
               {['COD', 'Online'].map(method => (
                 <TouchableOpacity
                   key={method}
@@ -346,7 +349,6 @@ export default function CheckoutScreen({ route, navigation }: any) {
               ))}
             </View>
 
-            {/* Sản phẩm */}
             <View style={styles.sectionHeader}>
               <Icon name="bag-outline" size={20} color={PRIMARY} />
               <Text style={styles.sectionTitle}>
@@ -403,30 +405,70 @@ export default function CheckoutScreen({ route, navigation }: any) {
             </TouchableOpacity>
           </View>
         }
+        scrollIndicatorInsets={{ right: 1 }}
+        contentContainerStyle={styles.listContent}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: { flex: 1, backgroundColor: LIGHT_BG },
-  statusBarSpacer: { height: 30, backgroundColor: PRIMARY },
+  screenContainer: {
+    flex: 1,
+    backgroundColor: LIGHT_BG,
+  },
+
+  statusBarSpacer: {
+    height: 30,
+    backgroundColor: PRIMARY,
+  },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     height: 56,
     paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: PRIMARY,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
+
   backIcon: {
+    padding: 4,
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 10,
+    borderRadius: 10,
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  container: { padding: 16 },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: '#fff',
+    flex: 1,
+  },
+
+  placeholder: {
+    width: 44,
+  },
+
+  listContent: {
+    paddingBottom: 30,
+  },
+
+  container: {
+    padding: 16,
+    backgroundColor: LIGHT_BG,
+  },
+
   section: {
     marginBottom: 16,
     backgroundColor: '#fff',
@@ -434,16 +476,40 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: BORDER_COLOR,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     marginBottom: 12,
+    gap: 10,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '700' },
-  addressText: { fontSize: 14, color: '#555', marginBottom: 10 },
-  editLink: { color: PRIMARY, fontSize: 14, fontWeight: '600' },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+
+  addressText: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  editLink: {
+    color: PRIMARY,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+
   itemContainer: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -453,35 +519,95 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: BORDER_COLOR,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
   },
+
   image: {
     width: 90,
     height: 90,
     borderRadius: 12,
     marginRight: 12,
     backgroundColor: LIGHT_BG,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
   },
-  itemContent: { flex: 1, justifyContent: 'space-between' },
-  name: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
-  itemDetails: { flexDirection: 'row', justifyContent: 'space-between' },
-  detailText: { fontSize: 12, color: '#666' },
-  detailValue: { fontWeight: '700', color: PRIMARY },
-  priceContainer: { alignItems: 'flex-end' },
-  price: { fontSize: 14, fontWeight: '700', color: ORANGE },
+
+  itemContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+
+  name: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    lineHeight: 20,
+  },
+
+  itemDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+
+  detailText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+
+  detailValue: {
+    fontWeight: '700',
+    color: PRIMARY,
+  },
+
+  priceContainer: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+
+  price: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: ORANGE,
+  },
+
   originalPrice: {
     fontSize: 11,
     color: '#999',
     textDecorationLine: 'line-through',
+    fontWeight: '500',
   },
+
   paymentButton: {
     borderWidth: 1.5,
     borderColor: BORDER_COLOR,
     padding: 12,
     borderRadius: 10,
     marginTop: 10,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  selectedPayment: { borderColor: PRIMARY, backgroundColor: '#f0f8f7' },
-  paymentContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+
+  selectedPayment: {
+    borderColor: PRIMARY,
+    backgroundColor: '#f0f8f7',
+  },
+
+  paymentContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+
   radioButton: {
     width: 24,
     height: 24,
@@ -490,15 +616,27 @@ const styles = StyleSheet.create({
     borderColor: BORDER_COLOR,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
-  radioChecked: { borderColor: PRIMARY },
+
+  radioChecked: {
+    borderColor: PRIMARY,
+  },
+
   radioDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: PRIMARY,
   },
-  paymentText: { fontSize: 14, fontWeight: '600' },
+
+  paymentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    flex: 1,
+  },
+
   appliedVoucher: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -510,11 +648,34 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 10,
   },
-  voucherInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  voucherDetails: { flex: 1 },
-  voucherCode: { fontSize: 14, fontWeight: '700', color: PRIMARY },
-  voucherDesc: { fontSize: 12, color: '#666', marginTop: 4 },
-  voucherInputContainer: { marginTop: 10 },
+
+  voucherInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+
+  voucherDetails: {
+    flex: 1,
+  },
+
+  voucherCode: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: PRIMARY,
+  },
+
+  voucherDesc: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+
+  voucherInputContainer: {
+    marginTop: 10,
+  },
+
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -525,7 +686,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 8,
   },
-  inputIcon: { marginRight: 4 },
+
+  inputIcon: {
+    marginRight: 4,
+  },
+
   voucherInput: {
     flex: 1,
     height: 44,
@@ -533,6 +698,7 @@ const styles = StyleSheet.create({
     color: '#333',
     padding: 0,
   },
+
   applyButton: {
     backgroundColor: PRIMARY,
     paddingHorizontal: 16,
@@ -542,36 +708,102 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 90,
   },
-  applyButtonDisabled: { backgroundColor: '#ccc' },
-  applyButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  applyButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+
+  applyButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+
   divider: {
     height: 1,
     backgroundColor: BORDER_COLOR,
     marginHorizontal: 16,
     marginBottom: 16,
   },
-  footerContainer: { backgroundColor: '#fff', padding: 16 },
-  totalSection: { marginBottom: 18 },
+
+  footerContainer: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: BORDER_COLOR,
+  },
+
+  totalSection: {
+    marginBottom: 18,
+  },
+
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: BORDER_COLOR,
   },
-  finalTotal: { borderBottomWidth: 0, paddingVertical: 14 },
-  totalLabel: { fontSize: 14, fontWeight: '600' },
-  finalLabel: { fontSize: 16, fontWeight: '700' },
-  totalAmount: { fontSize: 14, fontWeight: '700', color: ORANGE },
-  finalAmount: { fontSize: 18, fontWeight: '700', color: ORANGE },
+
+  finalTotal: {
+    borderBottomWidth: 0,
+    paddingVertical: 14,
+    paddingTop: 12,
+  },
+
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+
+  finalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+
+  totalAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: ORANGE,
+  },
+
+  finalAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ORANGE,
+  },
+
   confirmButton: {
     backgroundColor: PRIMARY,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     flexDirection: 'row',
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
     gap: 10,
   },
-  confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
 
+  confirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+    color: PRIMARY,
+  },
+});
