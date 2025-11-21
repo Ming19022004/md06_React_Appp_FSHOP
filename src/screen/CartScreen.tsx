@@ -9,10 +9,13 @@ import Icon from 'react-native-vector-icons/Ionicons'
 
 // Theme colors
 const PRIMARY = '#0f766e';
+const PRIMARY_DARK = '#065f57';
 const ORANGE = '#f97316';
 const RED = '#ef4444';
 const GREEN = '#10b981';
 const AMBER = '#f59e0b';
+const LIGHT_BG = '#f8faf9';
+const BORDER_COLOR = '#e8f0ed';
 
 // Custom Image component với error handling
 const CustomImage = ({ source, style, ...props }: any) => {
@@ -275,34 +278,46 @@ export default function CartScreen({ navigation }: any) {
     const finalPrice = item.type === 'sale'
       ? product?.discount_price ?? product?.price ?? 0
       : product?.price ?? 0;
-
+    const originalPrice = product?.price ?? 0;
+    const isSale = item.type === 'sale' && finalPrice < originalPrice;
+    const discountPercent = isSale ? Math.round(((originalPrice - finalPrice) / originalPrice) * 100) : 0;
 
     return (
       <View style={styles.itemContainer}>
         <CustomCheckbox checked={isChecked} onPress={() => toggleSelectItem(productId, item.size)} />
 
-        <CustomImage
-          source={{ uri: getProductImageUrl(product) }}
-          style={styles.image}
-        />
+        <View style={styles.imageWrapper}>
+          <CustomImage
+            source={{ uri: getProductImageUrl(product) }}
+            style={styles.image}
+          />
+          {isSale && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-{discountPercent}%</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.infoContainer}>
-          <Text style={styles.name}>{product.name || 'Sản phẩm'}</Text>
-          <Text style={styles.price}>Giá: {finalPrice?.toLocaleString()} đ</Text>
-          <Text style={styles.size}>Size: {item.size}</Text>
+          <Text style={styles.name} numberOfLines={2}>{product.name || 'Sản phẩm'}</Text>
+          <View style={styles.priceSection}>
+            {isSale && <Text style={styles.originalPrice}>{originalPrice?.toLocaleString()} đ</Text>}
+            <Text style={styles.price}>{finalPrice?.toLocaleString()} đ</Text>
+          </View>
+          <Text style={styles.size}>Size: <Text style={styles.sizeValue}>{item.size}</Text></Text>
           <View style={styles.quantityRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.qtyContainer}>
               <TouchableOpacity
                 onPress={() => updateQuantity(productId, item.size, item.quantity - 1, item.type)}
                 style={styles.qtyButton}
               >
-                <Text style={styles.qtyText}>-</Text>
+                <Icon name="remove" size={16} color={PRIMARY} />
               </TouchableOpacity>
               <Text style={styles.quantity}>{item.quantity}</Text>
               <TouchableOpacity
                 onPress={() => updateQuantity(productId, item.size, item.quantity + 1, item.type)}
                 style={styles.qtyButton}
               >
-                <Text style={styles.qtyText}>+</Text>
+                <Icon name="add" size={16} color={PRIMARY} />
               </TouchableOpacity>
             </View>
 
@@ -319,7 +334,7 @@ export default function CartScreen({ navigation }: any) {
               }
               style={styles.deleteButton}
             >
-              <Text style={styles.deleteText}>🗑 Xoá</Text>
+              <Icon name="trash" size={18} color={RED} />
             </TouchableOpacity>
           </View>
 
@@ -330,16 +345,30 @@ export default function CartScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.statusBar} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
-          <Icon name="chevron-back" size={24} color="#fff" />
+          <Icon name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Giỏ hàng</Text>
+        <Text style={styles.headerTitle}>Giỏ hàng của tôi</Text>
+        <View style={styles.cartBadge}>
+          <Text style={styles.cartCount}>{cartItems.length}</Text>
+        </View>
       </View>
       {loading ? (
-        <ActivityIndicator size="large" color={PRIMARY} />
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text style={styles.loaderText}>Đang tải...</Text>
+        </View>
       ) : cartItems.length === 0 ? (
-        <Text style={styles.empty}>Giỏ hàng trống</Text>
+        <View style={styles.emptyContainer}>
+          <Icon name="cart-outline" size={80} color="#ccc" />
+          <Text style={styles.empty}>Giỏ hàng trống</Text>
+          <Text style={styles.emptySubtext}>Hãy thêm sản phẩm vào giỏ để tiếp tục</Text>
+          <TouchableOpacity style={styles.continueShopping} onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.continueShoppingText}>Tiếp tục mua sắm</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           <FlatList
@@ -347,16 +376,27 @@ export default function CartScreen({ navigation }: any) {
             keyExtractor={(_, index) => index.toString()}
             renderItem={renderItem}
             removeClippedSubviews={false}
+            contentContainerStyle={styles.flatListContent}
           />
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Tổng cộng đã chọn:</Text>
-            <Text style={styles.totalValue}>
-              {calculateSelectedTotal().toLocaleString()} đ
-            </Text>
+          <View style={styles.footer}>
+            <View style={styles.totalContainer}>
+              <View>
+                <Text style={styles.totalLabel}>Tổng cộng</Text>
+                <Text style={styles.totalSubLabel}>({cartItems.filter((item: any) => {
+                  const product = item.product_id || item;
+                  const key = `${product._id}_${item.size}`;
+                  return selectedItems[key];
+                }).length} sản phẩm)</Text>
+              </View>
+              <Text style={styles.totalValue}>
+                {calculateSelectedTotal().toLocaleString()} đ
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.buyNowButton} onPress={handleBuyNow} activeOpacity={0.85}>
+              <Icon name="bag-check" size={22} color="#fff" style={styles.buyNowIcon} />
+              <Text style={styles.buyNowText}>Thanh toán</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.buyNowButton} onPress={handleBuyNow}>
-            <Text style={styles.buyNowText}>Mua ngay</Text>
-          </TouchableOpacity>
         </>
       )}
     </View>
@@ -364,7 +404,11 @@ export default function CartScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 15, backgroundColor: '#EEEEEE' },
+  container: { flex: 1, backgroundColor: '#f5f5f5', paddingTop: 0 },
+  statusBar: {
+    height: 30,
+    backgroundColor: PRIMARY,
+  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -375,136 +419,296 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     height: 56,
-    marginBottom: 10,
-    position: 'relative',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: PRIMARY,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
 
   backIcon: {
-    position: 'absolute',
-    left: 0,
-    paddingHorizontal: 10,
+    padding: 4,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderRadius: 10,
   },
 
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     textAlign: 'center',
     color: '#fff',
+    flex: 1,
+    marginHorizontal: 8,
+    letterSpacing: 0.3,
   },
-  itemContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
+
+  cartBadge: {
+    backgroundColor: ORANGE,
+    borderRadius: 14,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: ORANGE,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
   },
-  image: {
-    width: 90,
-    height: 90,
-    borderRadius: 10,
-    marginRight: 10,
+
+  cartCount: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  itemContainer: {
+    flexDirection: 'row',
+    padding: 14,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: BORDER_COLOR,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  imageWrapper: {
+    position: 'relative',
+    marginRight: 14,
+  },
+  image: {
+    width: 105,
+    height: 105,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    backgroundColor: LIGHT_BG,
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: RED,
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  discountText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
   },
   infoContainer: {
     flex: 1,
     justifyContent: 'space-between',
-    gap: 4,
+    gap: 8,
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#1a1a1a',
+    lineHeight: 20,
+  },
+  priceSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   price: {
-    fontSize: 14,
+    fontSize: 16,
     color: ORANGE,
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
+    textDecorationLine: 'line-through',
   },
   size: {
-    fontSize: 13,
-    color: '#777',
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
   },
-  quantity: { fontSize: 14, color: '#888' },
+  sizeValue: {
+    fontWeight: '700',
+    color: PRIMARY,
+  },
+  quantity: { fontSize: 14, color: '#333', fontWeight: '700' },
   quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 5,
+    marginTop: 4,
+  },
+  qtyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: LIGHT_BG,
+    borderRadius: 10,
+    padding: 4,
+    gap: 8,
   },
   qtyButton: {
     paddingVertical: 6,
     paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: PRIMARY,
-    borderRadius: 8,
-    marginHorizontal: 5,
-    backgroundColor: '#eef8f6',
+    borderColor: BORDER_COLOR,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   qtyText: { fontSize: 16, fontWeight: 'bold', color: PRIMARY },
   deleteButton: {
-    marginTop: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#fee2e2',
+    backgroundColor: '#ffe5e5',
     borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  deleteText: { color: RED, fontWeight: 'bold' },
-  checkbox: { marginRight: 10, padding: 5 },
-  checkboxBox: {
-    width: 20,
-    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
+    borderColor: '#fcc5c5',
+  },
+  deleteText: { color: RED, fontWeight: '600', fontSize: 13 },
+  checkbox: { marginRight: 12, padding: 6 },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
     borderColor: PRIMARY,
-    borderRadius: 4,
+    borderRadius: 6,
     backgroundColor: '#fff',
   },
   checkboxChecked: {
     backgroundColor: GREEN,
+    borderColor: GREEN,
   },
+
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+  },
+
+  loaderText: {
+    fontSize: 16,
+    color: PRIMARY,
+    fontWeight: '600',
+  },
+
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+
+  empty: {
+    textAlign: 'center',
+    marginTop: 24,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+
+  emptySubtext: {
+    textAlign: 'center',
+    marginTop: 10,
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 36,
+  },
+
+  continueShopping: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 14,
+    paddingHorizontal: 36,
+    borderRadius: 12,
+    marginTop: 20,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+
+  continueShoppingText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  flatListContent: {
+    paddingVertical: 14,
+    paddingBottom: 24,
+  },
+
+  footer: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingTop: 16,
+    paddingBottom: 22,
+    borderTopWidth: 1,
+    borderTopColor: BORDER_COLOR,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderColor: '#ddd',
-    marginTop: 10,
+    alignItems: 'center',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+    marginBottom: 16,
   },
-  totalLabel: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-  totalValue: { fontSize: 18, color: ORANGE, fontWeight: 'bold' },
+  totalLabel: { fontSize: 15, fontWeight: '600', color: '#555' },
+  totalSubLabel: { fontSize: 12, color: '#999', marginTop: 2 },
+  totalValue: { fontSize: 20, color: ORANGE, fontWeight: '700' },
   buyNowButton: {
     backgroundColor: PRIMARY,
-    padding: 14,
-    borderRadius: 10,
-    marginTop: 20,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buyNowIcon: {
+    marginRight: 10,
   },
   buyNowText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  empty: {
-    textAlign: 'center',
-    marginTop: 30,
-    fontSize: 16,
-    color: '#888',
+    fontWeight: '700',
   },
 });
