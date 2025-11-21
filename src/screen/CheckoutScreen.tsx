@@ -574,3 +574,4 @@ const styles = StyleSheet.create({
   },
   confirmText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
+
