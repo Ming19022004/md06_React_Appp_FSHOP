@@ -1,14 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  TextInput,
+  View, Text, FlatList, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator, TextInput
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -29,7 +21,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [appliedVoucher, setAppliedVoucher] = useState<any>(null);
   const [voucherCode, setVoucherCode] = useState('');
-  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [voucherLoading, setVoucherLoading] = useState(false); 
 
   const fetchUser = useCallback(async () => {
     const id = await AsyncStorage.getItem('userId');
@@ -43,11 +35,9 @@ export default function CheckoutScreen({ route, navigation }: any) {
     fetchUser();
   }, [fetchUser]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchUser();
-    }, []),
-  );
+  useFocusEffect(useCallback(() => {
+    fetchUser();
+  }, []));
 
   const getFinalPrice = (product: any) => {
     if (product.discount_percent && product.discount_percent > 0) {
@@ -91,11 +81,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
   };
 
   const handleConfirmPayment = async () => {
-    if (
-      !user ||
-      typeof user.address !== 'string' ||
-      user.address.trim().length < 3
-    ) {
+    if (!user || typeof user.address !== 'string' || user.address.trim().length < 3) {
       Alert.alert('Chưa có địa chỉ', 'Vui lòng nhập địa chỉ giao hàng hợp lệ.');
       navigation.navigate('PersonalInfo');
       return;
@@ -104,11 +90,11 @@ export default function CheckoutScreen({ route, navigation }: any) {
     const subtotal = calculateSubtotal();
     const shippingFee = 30000;
     let voucherDiscount = 0;
-
+    
     if (appliedVoucher) {
       voucherDiscount = (subtotal * appliedVoucher.discount_percent) / 100;
     }
-
+    
     const finalTotal = subtotal + shippingFee - voucherDiscount;
 
     const generateOrderCode = () => {
@@ -134,7 +120,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
         totalPrice: finalTotal,
         shippingFee,
         finalTotal,
-        paymentMethod: 'cod',
+        paymentMethod: 'cod',             
         shippingAddress: user.address,
         status: 'waiting',
         order_code: generateOrderCode(),
@@ -166,40 +152,28 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const renderProductItem = ({ item }: any) => {
     const product = item.product_id || item;
     const finalPrice = getFinalPrice(product);
-    const hasDiscount =
-      product.discount_percent && product.discount_percent > 0;
+    const hasDiscount = product.discount_percent && product.discount_percent > 0;
     return (
       <View style={styles.itemContainer}>
         <Image
           source={{
             uri:
-              (product.images &&
-                product.images.length > 0 &&
-                product.images[0]) ||
+              (product.images && product.images.length > 0 && product.images[0]) ||
               'https://via.placeholder.com/150',
           }}
           style={styles.image}
         />
         <View style={styles.itemContent}>
-          <Text style={styles.name} numberOfLines={2}>
-            {product.name}
-          </Text>
+          <Text style={styles.name} numberOfLines={2}>{product.name}</Text>
           <View style={styles.itemDetails}>
             <View>
-              <Text style={styles.detailText}>
-                Size: <Text style={styles.detailValue}>{item.size}</Text>
-              </Text>
-              <Text style={styles.detailText}>
-                Số lượng:{' '}
-                <Text style={styles.detailValue}>{item.quantity}</Text>
-              </Text>
+              <Text style={styles.detailText}>Size: <Text style={styles.detailValue}>{item.size}</Text></Text>
+              <Text style={styles.detailText}>Số lượng: <Text style={styles.detailValue}>{item.quantity}</Text></Text>
             </View>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>{finalPrice.toLocaleString()} đ</Text>
               {hasDiscount && (
-                <Text style={styles.originalPrice}>
-                  {product.price.toLocaleString()} đ
-                </Text>
+                <Text style={styles.originalPrice}>{product.price.toLocaleString()} đ</Text>
               )}
             </View>
           </View>
@@ -220,10 +194,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     <View style={styles.screenContainer}>
       <View style={styles.statusBarSpacer} />
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backIcon}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
           <Icon name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thanh Toán</Text>
@@ -238,15 +209,10 @@ export default function CheckoutScreen({ route, navigation }: any) {
                 <Icon name="location-outline" size={20} color={PRIMARY} />
                 <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
               </View>
-              <Text style={styles.addressText}>
-                {user?.address || 'Chưa nhập địa chỉ'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('PersonalInfo')}
-              >
+              <Text style={styles.addressText}>{user?.address || 'Chưa nhập địa chỉ'}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('PersonalInfo')}>
                 <Text style={styles.editLink}>
-                  <Icon name="create-outline" size={14} color={PRIMARY} /> Chỉnh
-                  sửa
+                  <Icon name="create-outline" size={14} color={PRIMARY} /> Chỉnh sửa
                 </Text>
               </TouchableOpacity>
             </View>
@@ -256,19 +222,14 @@ export default function CheckoutScreen({ route, navigation }: any) {
                 <Icon name="ticket-outline" size={20} color={PRIMARY} />
                 <Text style={styles.sectionTitle}>Voucher</Text>
               </View>
-
+              
               {appliedVoucher ? (
                 <View style={styles.appliedVoucher}>
                   <View style={styles.voucherInfo}>
                     <Icon name="checkmark-circle" size={20} color={GREEN} />
                     <View style={styles.voucherDetails}>
-                      <Text style={styles.voucherCode}>
-                        {appliedVoucher.code}
-                      </Text>
-                      <Text style={styles.voucherDesc}>
-                        -{appliedVoucher.discount_percent}% (
-                        {voucherDiscount.toLocaleString()} đ)
-                      </Text>
+                      <Text style={styles.voucherCode}>{appliedVoucher.code}</Text>
+                      <Text style={styles.voucherDesc}>-{appliedVoucher.discount_percent}% ({voucherDiscount.toLocaleString()} đ)</Text>
                     </View>
                   </View>
                   <TouchableOpacity onPress={removeVoucher}>
@@ -278,12 +239,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
               ) : (
                 <View style={styles.voucherInputContainer}>
                   <View style={styles.inputRow}>
-                    <Icon
-                      name="code-outline"
-                      size={18}
-                      color="#999"
-                      style={styles.inputIcon}
-                    />
+                    <Icon name="code-outline" size={18} color="#999" style={styles.inputIcon} />
                     <TextInput
                       placeholder="Nhập mã voucher"
                       style={styles.voucherInput}
@@ -292,13 +248,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
                       placeholderTextColor="#999"
                       maxLength={20}
                     />
-                    <TouchableOpacity
-                      style={[
-                        styles.applyButton,
-                        voucherLoading || !voucherCode.trim()
-                          ? styles.applyButtonDisabled
-                          : {},
-                      ]}
+                    <TouchableOpacity 
+                      style={[styles.applyButton, voucherLoading || !voucherCode.trim() ? styles.applyButtonDisabled : {}]}
                       onPress={applyVoucher}
                       disabled={voucherLoading || !voucherCode.trim()}
                     >
@@ -319,7 +270,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
                 <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
               </View>
 
-              {['COD', 'Online'].map(method => (
+              {['COD', 'Online'].map((method) => (
                 <TouchableOpacity
                   key={method}
                   style={[
@@ -329,20 +280,11 @@ export default function CheckoutScreen({ route, navigation }: any) {
                   onPress={() => setPaymentMethod(method)}
                 >
                   <View style={styles.paymentContent}>
-                    <View
-                      style={[
-                        styles.radioButton,
-                        paymentMethod === method && styles.radioChecked,
-                      ]}
-                    >
-                      {paymentMethod === method && (
-                        <View style={styles.radioDot} />
-                      )}
+                    <View style={[styles.radioButton, paymentMethod === method && styles.radioChecked]}>
+                      {paymentMethod === method && <View style={styles.radioDot} />}
                     </View>
                     <Text style={styles.paymentText}>
-                      {method === 'COD'
-                        ? 'Thanh toán khi nhận hàng'
-                        : 'Thanh toán Online'}
+                      {method === 'COD' ? 'Thanh toán khi nhận hàng' : 'Thanh toán Online'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -351,9 +293,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
             <View style={styles.sectionHeader}>
               <Icon name="bag-outline" size={20} color={PRIMARY} />
-              <Text style={styles.sectionTitle}>
-                Sản phẩm ({selectedItems.length})
-              </Text>
+              <Text style={styles.sectionTitle}>Sản phẩm ({selectedItems.length})</Text>
             </View>
           </View>
         }
@@ -366,40 +306,28 @@ export default function CheckoutScreen({ route, navigation }: any) {
             <View style={styles.totalSection}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Tổng gốc:</Text>
-                <Text style={styles.totalAmount}>
-                  {subtotal.toLocaleString()} đ
-                </Text>
+                <Text style={styles.totalAmount}>{subtotal.toLocaleString()} đ</Text>
               </View>
 
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Phí vận chuyển:</Text>
-                <Text style={styles.totalAmount}>
-                  {shippingFee.toLocaleString()} đ
-                </Text>
+                <Text style={styles.totalAmount}>{shippingFee.toLocaleString()} đ</Text>
               </View>
 
               {appliedVoucher && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>Giảm giá voucher:</Text>
-                  <Text style={[styles.totalAmount, { color: GREEN }]}>
-                    -{voucherDiscount.toLocaleString()} đ
-                  </Text>
+                  <Text style={[styles.totalAmount, { color: GREEN }]}>-{voucherDiscount.toLocaleString()} đ</Text>
                 </View>
               )}
 
               <View style={[styles.totalRow, styles.finalTotal]}>
                 <Text style={styles.finalLabel}>Tổng thanh toán:</Text>
-                <Text style={styles.finalAmount}>
-                  {total.toLocaleString()} đ
-                </Text>
+                <Text style={styles.finalAmount}>{total.toLocaleString()} đ</Text>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={handleConfirmPayment}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment} activeOpacity={0.85}>
               <Icon name="checkmark-circle" size={22} color="#fff" />
               <Text style={styles.confirmText}>Đặt Hàng</Text>
             </TouchableOpacity>
@@ -422,7 +350,7 @@ const styles = StyleSheet.create({
     height: 30,
     backgroundColor: PRIMARY,
   },
-
+  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
