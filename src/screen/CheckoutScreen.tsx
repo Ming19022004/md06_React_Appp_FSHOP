@@ -1,73 +1,180 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import {
+  View, Text, FlatList, StyleSheet, Image, TouchableOpacity, Alert
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import API from '../api';
+export default function CheckoutScreen({ route, navigation }: any) {
+  const { selectedItems } = route.params;
+  const [userId, setUserId] = useState('');
+  const [addressList, setAddressList] = useState<any[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [discount, setDiscount] = useState(0);
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+  const [showVoucherList, setShowVoucherList] = useState(false);
 
-export default function CheckoutScreen() {
-  const dummyProducts = [
-    { id: 1, name: 'Sản phẩm 1', price: 100000 },
-    { id: 2, name: 'Sản phẩm 2', price: 200000 },
+  const vouchers = [
+    { code: 'GIAM10', label: 'Giảm 10%', discount: 0.1 },
+    { code: 'GIAM20', label: 'Giảm 20%', discount: 0.2 },
+    { code: 'FREESHIP', label: 'Giảm 15%', discount: 0.15 },
   ];
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Thanh Toán</Text>
+  useEffect(() => {
+    const init = async () => {
+      const id = await AsyncStorage.getItem('userId');
+      if (id) {
+        setUserId(id);
+        fetchAddresses(id);
+      }
+    };
+    init();
+  }, []);
 
-      {/* ---- Địa chỉ giao hàng ---- */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
-        <TouchableOpacity style={styles.box}>
-          <Text>Chọn địa chỉ</Text>
-        </TouchableOpacity>
-      </View>
+  const fetchAddresses = async (id: string) => {
+    try {
+      const res = await API.get(`/addresses/user/${id}`);
+      if (Array.isArray(res.data)) {
+        setAddressList(res.data);
+      }
+    } catch (err) {
+      console.error('Lỗi lấy danh sách địa chỉ:', err);
+    }
+  };
 
-      {/* ---- Voucher ---- */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Mã giảm giá</Text>
-        <TouchableOpacity style={styles.box}>
-          <Text>Chọn voucher</Text>
-        </TouchableOpacity>
-      </View>
+  const calculateTotal = () => {
+    const subtotal = selectedItems.reduce((sum: number, item: any) => {
+      const product = item.product_id || item;
+      return sum + (product.price || 0) * (item.quantity || 1);
+    }, 0);
+    return subtotal - subtotal * discount;
+  };
 
-      {/* ---- Phương thức thanh toán ---- */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+  const handleConfirmPayment = () => {
+    if (!selectedAddress) {
+      Alert.alert('Thông báo', 'Vui lòng chọn địa chỉ giao hàng.');
+      return;
+    }
+    Alert.alert('Đặt hàng thành công', 'Đơn hàng đã được tạo!');
+    navigation.navigate('Home');
+  };
 
-        <TouchableOpacity style={styles.paymentButton}>
-          <Text>Thanh toán khi nhận hàng (COD)</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.paymentButton}>
-          <Text>Thanh toán Online</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ---- Danh sách sản phẩm ---- */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Sản phẩm</Text>
-
-        <FlatList
-          data={dummyProducts}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.productItem}>
-              <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productPrice}>{item.price.toLocaleString()} đ</Text>
-            </View>
-          )}
-        />
-      </View>
-
-      {/* ---- Tổng tiền + nút đặt hàng ---- */}
-      <View style={styles.footer}>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
-          <Text style={styles.totalPrice}>0 đ</Text>
+  const renderProductItem = ({ item }: any) => {
+    const product = item.product_id || item;
+    return (
+      <View style={styles.itemContainer}>
+        <Image source={{ uri: product.image }} style={styles.image} />
+        <View style={styles.infoContainer}>
+          <Text style={styles.name}>{product.name}</Text>
+          <Text style={styles.detail}>Size: {item.size}</Text>
+          <Text style={styles.detail}>Số lượng: {item.quantity}</Text>
+          <Text style={styles.price}>{product.price?.toLocaleString()} đ</Text>
         </View>
-
-        <TouchableOpacity style={styles.confirmButton}>
-          <Text style={styles.confirmText}>Đặt Hàng</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    );
+  };
+
+  const renderAddressItem = ({ item }: any) => {
+    const isSelected = selectedAddress?._id === item._id;
+    return (
+      <TouchableOpacity
+        style={[styles.addressBox, isSelected && styles.selectedAddressBox]}
+        onPress={() => setSelectedAddress(item)}
+      >
+        <Text style={styles.addressText}>{item.fullName} - {item.phone}</Text>
+        <Text>{item.receivingAddress}, {item.commune}, {item.district}, {item.province}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <FlatList
+      ListHeaderComponent={
+        <View style={styles.container}>
+          <Text style={styles.title}>Thanh Toán</Text>
+
+          {/* Địa chỉ giao hàng */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
+            <Text style={{ marginBottom: 8, color: '#555' }}>
+              {selectedAddress
+                ? `${selectedAddress.receivingAddress}, ${selectedAddress.commune}, ${selectedAddress.district}, ${selectedAddress.province}`
+                : 'Chưa chọn địa chỉ'}
+            </Text>
+
+            <Text style={styles.sectionSubTitle}>Chọn địa chỉ khác</Text>
+            {addressList.map((item) => renderAddressItem({ item }))}
+          </View>
+
+          {/* Mã giảm giá */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Chọn Voucher</Text>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowVoucherList(!showVoucherList)}
+            >
+              <Text style={{ flex: 1 }}>
+                {selectedVoucher ? selectedVoucher.label : 'Chọn mã giảm giá'}
+              </Text>
+              <Text>▼</Text>
+            </TouchableOpacity>
+
+            {showVoucherList && (
+              <View style={styles.voucherList}>
+                {vouchers.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.voucherItem}
+                    onPress={() => {
+                      setSelectedVoucher(item);
+                      setDiscount(item.discount);
+                      setShowVoucherList(false);
+                      Alert.alert('Áp dụng thành công', `Áp dụng ${item.label}`);
+                    }}
+                  >
+                    <Text>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Phương thức thanh toán */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+            <TouchableOpacity
+              style={[styles.paymentButton, paymentMethod === 'COD' && styles.selected]}
+              onPress={() => setPaymentMethod('COD')}
+            >
+              <Text>Thanh toán khi nhận hàng</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.paymentButton, paymentMethod === 'Online' && styles.selected]}
+              onPress={() => setPaymentMethod('Online')}
+            >
+              <Text>Thanh toán Online</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.sectionTitle}>Sản phẩm</Text>
+        </View>
+      }
+      data={selectedItems}
+      renderItem={renderProductItem}
+      removeClippedSubviews={false}
+      keyExtractor={(_, index) => index.toString()}
+      ListFooterComponent={
+        <View style={styles.footerContainer}>
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
+            <Text style={styles.totalAmount}>{calculateTotal().toLocaleString()} đ</Text>
+          </View>
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment}>
+            <Text style={styles.confirmText}>Đặt Hàng</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    />
   );
 }
 
