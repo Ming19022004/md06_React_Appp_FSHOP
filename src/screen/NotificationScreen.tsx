@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -30,7 +31,7 @@ const NotificationScreen = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // Lấy userId từ AsyncStorage
+  // Lấy userId
   useEffect(() => {
     const getUserId = async () => {
       const uid = await AsyncStorage.getItem('userId');
@@ -39,7 +40,7 @@ const NotificationScreen = () => {
     getUserId();
   }, []);
 
-  // Gọi API lấy thông báo
+  // Gọi API lấy danh sách thông báo
   useEffect(() => {
     if (!userId) return;
 
@@ -48,7 +49,7 @@ const NotificationScreen = () => {
         const response = await API.get(`/notifications/user/${userId}`);
         setNotifications(response.data.data);
       } catch (error) {
-        console.error("Lỗi lấy thông báo:", error);
+        console.error('Lỗi lấy thông báo:', error);
       } finally {
         setLoading(false);
       }
@@ -57,14 +58,37 @@ const NotificationScreen = () => {
     fetchNotifications();
   }, [userId]);
 
+  // Đánh dấu đã đọc
+  const markAsRead = async (id: string) => {
+    try {
+      await API.put(`/notifications/read/${id}`);
+
+      const response = await API.get(`/notifications/user/${userId}`);
+      setNotifications(response.data.data);
+    } catch (error) {
+      console.error('Lỗi đánh dấu đã đọc:', error);
+    }
+  };
+
   const renderItem = ({ item }: { item: NotificationItem }) => (
-    <View style={[styles.item, item.isRead ? styles.read : styles.unread]}>
+    <TouchableOpacity
+      style={[styles.item, item.isRead ? styles.read : styles.unread]}
+      onPress={() => {
+        if (item.data?.orderId) {
+          navigation.navigate('OrderTracking', { orderId: item.data.orderId });
+        } else {
+          Alert.alert(item.title, item.message);
+        }
+
+        if (!item.isRead && item._id.length === 24) {
+          markAsRead(item._id);
+        }
+      }}
+    >
       <Text style={styles.title}>{item.title}</Text>
       <Text>{item.message}</Text>
-      <Text style={styles.time}>
-        {new Date(item.createdAt).toLocaleString()}
-      </Text>
-    </View>
+      <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
+    </TouchableOpacity>
   );
 
   return (
@@ -72,6 +96,7 @@ const NotificationScreen = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Thông báo</Text>
       </View>
+
       {loading ? (
         <ActivityIndicator size="large" />
       ) : (
@@ -102,7 +127,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    textAlign: 'center',
   },
   item: {
     padding: 12,
