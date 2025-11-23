@@ -17,14 +17,7 @@ const SplashScreen = ({ navigation }: any) => {
                 resizeMode = "cover"
                 >
                 <View style = {styles.content}>
-                {/*
-                    <Image
-                        source = {
-                                require('../assets/images/logo_shop.jpg')
-                            }
-                        style = {styles.logo}
-                    />
-                    {/* <Text style={styles.title}>Chào mừng đến với app bán quần áo thể thao!</Text> */}
+              
                 </View>
 
             </ImageBackground>
