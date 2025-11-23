@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ImageBackground } from 'react-native';
 
