@@ -2,6 +2,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
+
+
+import React from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
 import HomeScreen from '../screen/HomeScreen';
 import SearchScreen from '../screen/SearchScreen';
 import FavoriteScreen from '../screen/FavoriteScreen';

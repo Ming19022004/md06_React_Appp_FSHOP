@@ -14,6 +14,7 @@ import PrivacyPolicyScreen from "./src/screen/PrivacyPolicyScreen";
 import CheckoutScreen from "./src/screen/CheckoutScreen";
 import PersonalInfoScreen from "./src/screen/PersonalInfoScreen";
 import OrderTrackingScreen from "./src/screen/OrderTrackingScreen";
+import ForgotPassword from "./src/login/ForgotPassword";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ export default function App() {
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="ForgotP" component={ForgotPassword} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="MainTab" component={TabNavigator} />
