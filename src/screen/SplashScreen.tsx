@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ImageBackground } from 'react-native';
 
@@ -5,26 +6,21 @@ const SplashScreen = ({ navigation }: any) => {
     useEffect(() => {
         const timeout = setTimeout(() => {
             navigation.replace('Login');
-            }, 2500);
+            }, 3500);
 
         return () => clearTimeout(timeout);
         }, []);
 
         return (
             <ImageBackground
-                source = {require('../assets/images/backgroundSports2.jpg')}
+                source = {require('../assets/images/logo_app.png')}
                 style = {styles.background}
                 resizeMode = "cover"
                 >
                 <View style = {styles.content}>
-                    <Image
-                        source = {
-                                require('../assets/images/logo_shop.jpg')
-                            }
-                        style = {styles.logo}
-                    />
-                    {/* <Text style={styles.title}>Chào mừng đến với app bán quần áo thể thao!</Text> */}
+              
                 </View>
+
             </ImageBackground>
             );
     };

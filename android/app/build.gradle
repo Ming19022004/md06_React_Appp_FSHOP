@@ -122,3 +122,5 @@ dependencies {
     implementation "com.google.android.gms:play-services-auth:20.7.0"
     implementation 'com.facebook.android:facebook-android-sdk:16.0.1'
 }
+// --- 👇 THÊM DÒNG NÀY VÀO DƯỚI CÙNG ĐỂ SỬA LỖI ICON 👇 ---
+apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
