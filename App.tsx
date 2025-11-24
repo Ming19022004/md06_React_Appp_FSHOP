@@ -15,6 +15,8 @@ import CheckoutScreen from "./src/screen/CheckoutScreen";
 import PersonalInfoScreen from "./src/screen/PersonalInfoScreen";
 import OrderTrackingScreen from "./src/screen/OrderTrackingScreen";
 import ForgotPassword from "./src/login/ForgotPassword";
+import NotificationScreen from "./src/screen/NotificationScreen";
+
 
 const Stack = createNativeStackNavigator();
 
@@ -37,7 +39,8 @@ export default function App() {
         <Stack.Screen name="Category" component={LogoMoreScreen} />
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
-         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+        <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+        <Stack.Screen name="Notification" component={NotificationScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
