@@ -5,11 +5,13 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
+import socket from '../socket';
+import Icon from 'react-native-vector-icons/Ionicons';
 import API from '../api';
 
 type NotificationItem = {
@@ -22,7 +24,7 @@ type NotificationItem = {
 };
 
 type RootStackParamList = {
-  OrderTracking: { orderId: string };
+  OrderTracking: { orderId: string }; 
 };
 
 const NotificationScreen = () => {
@@ -31,16 +33,47 @@ const NotificationScreen = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
-  // Lấy userId
+  // Kết nối socket và join room
   useEffect(() => {
-    const getUserId = async () => {
+    const initSocket = async () => {
       const uid = await AsyncStorage.getItem('userId');
-      setUserId(uid);
+      console.log("UID từ AsyncStorage:", uid);
+      if (uid) {
+        setUserId(uid);
+
+        if (!socket.connected) {
+          socket.connect();
+        }
+
+        socket.emit('joinRoom', `notification_${uid}`);
+        socket.emit('joinRoom', `order_${uid}`);
+        console.log('Joined rooms for UID:', uid);
+      }
     };
-    getUserId();
+
+    initSocket();
+
+    return () => {
+      socket.off('connect');
+    };
   }, []);
 
-  // Gọi API lấy danh sách thông báo
+  // Lắng nghe sự kiện socket
+  useEffect(() => {
+    const handleNotification = (data: NotificationItem) => {
+      console.log("Notification received:", data);
+      setNotifications(prev => [data, ...prev]);
+      Alert.alert(data.title, data.message);
+    };
+
+    socket.on('notification received', handleNotification);
+
+    return () => {
+      socket.off('notification received', handleNotification);
+    };
+  }, []);
+
+  // Gọi API lấy thông báo
   useEffect(() => {
     if (!userId) return;
 
@@ -49,7 +82,7 @@ const NotificationScreen = () => {
         const response = await API.get(`/notifications/user/${userId}`);
         setNotifications(response.data.data);
       } catch (error) {
-        console.error('Lỗi lấy thông báo:', error);
+        console.error("Lỗi lấy thông báo:", error);
       } finally {
         setLoading(false);
       }
@@ -58,15 +91,15 @@ const NotificationScreen = () => {
     fetchNotifications();
   }, [userId]);
 
-  // Đánh dấu đã đọc
   const markAsRead = async (id: string) => {
     try {
       await API.put(`/notifications/read/${id}`);
 
+      // Gọi lại API để cập nhật danh sách
       const response = await API.get(`/notifications/user/${userId}`);
       setNotifications(response.data.data);
     } catch (error) {
-      console.error('Lỗi đánh dấu đã đọc:', error);
+      console.error("Lỗi đánh dấu đã đọc:", error);
     }
   };
 
@@ -75,7 +108,7 @@ const NotificationScreen = () => {
       style={[styles.item, item.isRead ? styles.read : styles.unread]}
       onPress={() => {
         if (item.data?.orderId) {
-          navigation.navigate('OrderTracking', { orderId: item.data.orderId });
+          navigation.navigate('OrderTracking', { orderId: item.data?.orderId });
         } else {
           Alert.alert(item.title, item.message);
         }
@@ -87,16 +120,20 @@ const NotificationScreen = () => {
     >
       <Text style={styles.title}>{item.title}</Text>
       <Text>{item.message}</Text>
-      <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
+      <Text style={styles.time}>
+        {new Date(item.createdAt).toLocaleString()}
+      </Text>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
+          <Icon name="chevron-back" size={24} color="#000" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Thông báo</Text>
       </View>
-
       {loading ? (
         <ActivityIndicator size="large" />
       ) : (
@@ -119,14 +156,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#fffef6',
   },
   header: {
-    height: 55,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 55,
     marginBottom: 10,
+    position: 'relative',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  backIcon: {
+    position: 'absolute',
+    left: 0,
+    paddingHorizontal: 10,
   },
   item: {
     padding: 12,
