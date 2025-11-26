@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, Image, TouchableOpacity, Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import API from '../api';
+
 export default function CheckoutScreen({ route, navigation }: any) {
   const { selectedItems } = route.params;
-  const [userId, setUserId] = useState('');
-  const [addressList, setAddressList] = useState<any[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+
+  const [user, setUser] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [discount, setDiscount] = useState(0);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
@@ -20,44 +21,83 @@ export default function CheckoutScreen({ route, navigation }: any) {
     { code: 'FREESHIP', label: 'Giảm 15%', discount: 0.15 },
   ];
 
-  useEffect(() => {
-    const init = async () => {
-      const id = await AsyncStorage.getItem('userId');
-      if (id) {
-        setUserId(id);
-        fetchAddresses(id);
-      }
-    };
-    init();
-  }, []);
-
-  const fetchAddresses = async (id: string) => {
-    try {
-      const res = await API.get(`/addresses/user/${id}`);
-      if (Array.isArray(res.data)) {
-        setAddressList(res.data);
-      }
-    } catch (err) {
-      console.error('Lỗi lấy danh sách địa chỉ:', err);
+  const fetchUser = useCallback(async () => {
+    const id = await AsyncStorage.getItem('userId');
+    if (id) {
+      const res = await API.get(`/users/${id}`);
+      setUser(res.data);
     }
-  };
+  }, []);
+    useEffect(() => {
+      fetchUser();
+    }, [fetchUser]);
 
-  const calculateTotal = () => {
-    const subtotal = selectedItems.reduce((sum: number, item: any) => {
+    useFocusEffect(
+      useCallback(() => {
+        fetchUser();
+      }, [])
+    );
+
+
+   const calculateSubtotal = () => {
+    return selectedItems.reduce((sum: number, item: any) => {
       const product = item.product_id || item;
       return sum + (product.price || 0) * (item.quantity || 1);
     }, 0);
-    return subtotal - subtotal * discount;
   };
+const handleConfirmPayment = async () => {
+  if (!user?.address) {
+    Alert.alert('Chưa có địa chỉ', 'Vui lòng nhập địa chỉ giao hàng.');
+    navigation.navigate('PersonalInfo');
+    return;
+  }
 
-  const handleConfirmPayment = () => {
-    if (!selectedAddress) {
-      Alert.alert('Thông báo', 'Vui lòng chọn địa chỉ giao hàng.');
-      return;
+  try {
+    const subtotal = calculateSubtotal();
+    const shippingFee = 20000;
+    const discountAmount = subtotal * discount;
+    const finalTotal = subtotal + shippingFee - discountAmount;
+
+    // ✅ Tạo order_code duy nhất
+    const generateOrderCode = () => {
+      const now = new Date();
+      const timestamp = now.getTime().toString().slice(-6);
+      const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+      return `ORD-${timestamp}-${random}`;
+    };
+
+    const orderPayload: any = {
+      id_user: user._id,
+      items: selectedItems.map((item: any) => ({
+        id_product: item.product_id?._id || item._id,
+        name: item.product_id?.name || item.name,
+        purchaseQuantity: item.quantity,
+        price: item.product_id?.price || item.price
+      })),
+      totalPrice: subtotal,
+      shippingFee: shippingFee,
+      discount: discountAmount,
+      finalTotal: finalTotal,
+      paymentMethod: paymentMethod.toLowerCase(),
+      shippingAddress: user.address,
+      status: 'waiting',
+      order_code: generateOrderCode() // ✅ Thêm mã đơn hàng vào
+    };
+
+    if (selectedVoucher?.id) {
+      orderPayload.voucherId = selectedVoucher.id;
     }
-    Alert.alert('Đặt hàng thành công', 'Đơn hàng đã được tạo!');
+    console.log('orderPayload gửi đi:', orderPayload);
+
+    await API.post('/orders', orderPayload);
+
+    Alert.alert('Thành công', 'Đặt hàng thành công!');
     navigation.navigate('Home');
-  };
+  } catch (err: any) {
+    console.error('Lỗi API:', err.response?.data || err.message);
+    Alert.alert('Lỗi', err.response?.data?.message || 'Không thể đặt hàng');
+  }
+};
 
   const renderProductItem = ({ item }: any) => {
     const product = item.product_id || item;
@@ -74,19 +114,6 @@ export default function CheckoutScreen({ route, navigation }: any) {
     );
   };
 
-  const renderAddressItem = ({ item }: any) => {
-    const isSelected = selectedAddress?._id === item._id;
-    return (
-      <TouchableOpacity
-        style={[styles.addressBox, isSelected && styles.selectedAddressBox]}
-        onPress={() => setSelectedAddress(item)}
-      >
-        <Text style={styles.addressText}>{item.fullName} - {item.phone}</Text>
-        <Text>{item.receivingAddress}, {item.commune}, {item.district}, {item.province}</Text>
-      </TouchableOpacity>
-    );
-  };
-
   return (
     <FlatList
       ListHeaderComponent={
@@ -96,14 +123,12 @@ export default function CheckoutScreen({ route, navigation }: any) {
           {/* Địa chỉ giao hàng */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Địa chỉ giao hàng</Text>
-            <Text style={{ marginBottom: 8, color: '#555' }}>
-              {selectedAddress
-                ? `${selectedAddress.receivingAddress}, ${selectedAddress.commune}, ${selectedAddress.district}, ${selectedAddress.province}`
-                : 'Chưa chọn địa chỉ'}
-            </Text>
-
-            <Text style={styles.sectionSubTitle}>Chọn địa chỉ khác</Text>
-            {addressList.map((item) => renderAddressItem({ item }))}
+            <Text>{user?.address || 'Chưa nhập địa chỉ'}</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PersonalInfo')}
+            >
+              <Text style={{ color: 'blue', marginTop: 4 }}>Ấn để chỉnh sửa địa chỉ</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Mã giảm giá */}
@@ -129,7 +154,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
                       setSelectedVoucher(item);
                       setDiscount(item.discount);
                       setShowVoucherList(false);
-                      Alert.alert('Áp dụng thành công', `Áp dụng ${item.label}`);
+                       Alert.alert('Thành công', `Áp dụng ${item.label}`);
+
                     }}
                   >
                     <Text>{item.label}</Text>
@@ -160,14 +186,32 @@ export default function CheckoutScreen({ route, navigation }: any) {
         </View>
       }
       data={selectedItems}
-      renderItem={renderProductItem}
       removeClippedSubviews={false}
+      renderItem={renderProductItem}
       keyExtractor={(_, index) => index.toString()}
       ListFooterComponent={
         <View style={styles.footerContainer}>
+                  <View style={styles.totalContainer}>
+                    <Text style={styles.totalLabel}>Tổng gốc:</Text>
+                    <Text style={styles.totalAmount}>{calculateSubtotal().toLocaleString()} đ</Text>
+                  </View>
+                  {selectedVoucher && (
+                    <View style={styles.totalContainer}>
+                      <Text style={styles.totalLabel}>Giảm giá:</Text>
+                      <Text style={styles.totalAmount}>
+                        -{(calculateSubtotal() * discount).toLocaleString()} đ
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.totalContainer}>
+                    <Text style={styles.totalLabel}>Phí vận chuyển:</Text>
+                    <Text style={styles.totalAmount}>20,000 đ</Text>
+                  </View>
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
-            <Text style={styles.totalAmount}>{calculateTotal().toLocaleString()} đ</Text>
+            <Text style={styles.totalAmount}>
+              {(calculateSubtotal() + 20000 - calculateSubtotal() * discount).toLocaleString()} đ
+            </Text>
           </View>
           <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment}>
             <Text style={styles.confirmText}>Đặt Hàng</Text>
@@ -185,42 +229,38 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
 
-  box: {
-    padding: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    backgroundColor: '#f9f9f9',
-  },
-
-  paymentButton: {
-    padding: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#ccc',
-    marginTop: 10,
-  },
-
-  productItem: {
-    padding: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#e0e0e0',
-    marginBottom: 8,
-  },
-  productName: { fontSize: 15 },
-  productPrice: { marginTop: 4, fontWeight: 'bold', color: 'orange' },
-
-  footer: { marginTop: 20 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  totalLabel: { fontSize: 16, fontWeight: 'bold' },
-  totalPrice: { fontSize: 16, fontWeight: 'bold', color: 'orange' },
-
-  confirmButton: {
-    backgroundColor: 'orange',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  confirmText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-});
+   itemContainer: {
+     flexDirection: 'row', backgroundColor: '#f9f9f9',
+     padding: 10, marginHorizontal: 16, marginBottom: 10, borderRadius: 8,
+   },
+   image: { width: 80, height: 80, borderRadius: 6, marginRight: 10 },
+   infoContainer: { flex: 1 },
+   name: { fontSize: 16, fontWeight: 'bold' },
+   detail: { fontSize: 14, color: '#555' },
+   price: { fontSize: 14, fontWeight: 'bold', color: 'orange', marginTop: 4 },
+   dropdownButton: {
+     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+     borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 10,
+   },
+   voucherList: { marginTop: 5, backgroundColor: '#f1f1f1', borderRadius: 6 },
+   voucherItem: {
+     padding: 10, borderBottomWidth: 1, borderBottomColor: '#ddd'
+   },
+   paymentButton: {
+     borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginTop: 10
+   },
+   selected: { borderColor: 'orange', backgroundColor: '#fff8e1' },
+   totalContainer: {
+     flexDirection: 'row', justifyContent: 'space-between',
+     paddingTop: 10, borderTopWidth: 1, borderColor: '#ccc',
+     marginHorizontal: 16
+   },
+   totalLabel: { fontSize: 16, fontWeight: 'bold' },
+   totalAmount: { fontSize: 16, fontWeight: 'bold', color: 'orange' },
+   confirmButton: {
+     backgroundColor: 'orange', margin: 16, padding: 14,
+     borderRadius: 8, alignItems: 'center',
+   },
+   confirmText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+   footerContainer: { marginBottom: 40 }
+ });
