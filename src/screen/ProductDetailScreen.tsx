@@ -18,13 +18,12 @@ import API from '../api';
 import Snackbar from 'react-native-snackbar';
 
 const { width } = Dimensions.get('window');
-const PRIMARY_COLOR = '#0f766e'; // Màu xanh chủ đạo
+const PRIMARY_COLOR = '#0f766e';
 
 const ProductDetailScreen = ({ route, navigation }: any) => {
   const { productId } = route.params;
   const productType = 'normal';
 
-  // --- STATE ---
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -33,43 +32,33 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   const [bookmark, setBookMark] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Tính tổng tiền
+  // Tính tổng tiền an toàn
   const totalPrice = product ? product.price * quantity : 0;
 
-  // --- EFFECTS ---
   useEffect(() => {
     fetchProduct();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
   useEffect(() => {
     checkBookmark();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
   useEffect(() => {
     return () => Snackbar.dismiss();
   }, []);
 
-  // --- FUNCTIONS ---
   const fetchProduct = async () => {
     try {
-      // Giả sử API trả về cấu trúc { product: ..., comments: ... }
-      // Nếu API của bạn khác, hãy điều chỉnh lại res.data.data hoặc res.data
       const res = await API.get(`/products/${productId}`);
-
-      // Tùy chỉnh theo cấu trúc API thực tế của bạn (dựa trên code cũ và mới)
       const productData = res.data.data || res.data.product || res.data;
       setProduct(productData);
 
-      // Set size mặc định nếu có
       if (productData.sizes && productData.sizes.length > 0) {
         const availableSize = productData.sizes.find(
           (s: any) => s.quantity > 0,
         );
         if (availableSize) setSelectedSize(availableSize.size);
       }
-
       setComments(res.data.comments || []);
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -107,7 +96,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
       setQuantity(prev => (prev > 1 ? prev - 1 : 1));
       return;
     }
-
     if (!selectedSize) return;
     const sizeObj = product.sizes.find((s: any) => s.size === selectedSize);
     if (sizeObj && quantity < sizeObj.quantity) {
@@ -121,17 +109,12 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   };
 
   const handleAddToCart = async () => {
-    // 1. Kiểm tra Size
     if (!selectedSize) {
-      Alert.alert(
-        'Thông báo',
-        'Vui lòng chọn size trước khi thêm vào giỏ hàng!',
-      );
+      Alert.alert('Thông báo', 'Vui lòng chọn size trước khi thêm vào giỏ hàng!');
       return;
     }
 
     try {
-      // 2. Kiểm tra Đăng nhập
       const userId = await AsyncStorage.getItem('userId');
       if (!userId) {
         Alert.alert('Yêu cầu', 'Vui lòng đăng nhập để mua hàng', [
@@ -141,7 +124,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         return;
       }
 
-      // 3. Gọi API thêm vào giỏ
       const response = await API.post('/carts/add', {
         user_id: userId,
         product_id: product._id,
@@ -154,40 +136,28 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         color: 'Default',
       });
 
-      // Kiểm tra logic trả về của API (tuỳ server của bạn trả về gì)
       if (response.data && response.data.success === false) {
         Alert.alert('Thông báo', 'Sản phẩm này hiện không đủ số lượng!');
         return;
       }
 
-      // 4. HIỆN LỰA CHỌN CHO NGƯỜI DÙNG (Phần bạn yêu cầu)
+      // --- LOGIC ALERT BẠN YÊU CẦU ---
       Alert.alert(
         'Thêm thành công!',
         `Đã thêm ${quantity} sản phẩm vào giỏ hàng.`,
         [
-          {
-            text: 'Tiếp tục mua sắm',
-            onPress: () => {
-              // Không làm gì cả, chỉ đóng Alert để người dùng ở lại xem tiếp
-              // Hoặc dùng navigation.goBack() nếu muốn quay lại trang danh sách
-              console.log('User continued shopping');
-            },
-            style: 'cancel', // Nút này sẽ mờ hơn hoặc nằm bên trái (tuỳ OS)
-          },
+          { text: 'Tiếp tục mua sắm', style: 'cancel' },
           {
             text: 'Xem giỏ hàng',
-            onPress: () => navigation.navigate('Cart'), // Chuyển sang màn hình Cart
-            style: 'default', // Nút này sẽ đậm hơn
+            onPress: () => navigation.navigate('Cart'),
+            style: 'default',
           },
         ],
-        { cancelable: true }, // Cho phép bấm ra ngoài để đóng
+        { cancelable: true },
       );
     } catch (error) {
       console.error('Lỗi thêm giỏ hàng:', error);
-      Alert.alert(
-        'Lỗi',
-        'Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại.',
-      );
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi thêm vào giỏ hàng.');
     }
   };
 
@@ -198,11 +168,8 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         Alert.alert('Yêu cầu đăng nhập');
         return;
       }
-
       if (bookmark) {
-        await API.delete(
-          `/favorites/${userId}/${productId}?type=${productType}`,
-        );
+        await API.delete(`/favorites/${userId}/${productId}?type=${productType}`);
         setBookMark(false);
         Snackbar.show({ text: 'Đã xóa khỏi yêu thích' });
       } else {
@@ -219,7 +186,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     }
   };
 
-  // --- RENDER ---
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -238,14 +204,11 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
   return (
     <View style={styles.mainContainer}>
-      {/* 1. STATUS BAR CẤU HÌNH TRONG SUỐT */}
       <StatusBar
-        barStyle="light-content" // Icon màu trắng
-        backgroundColor="transparent" // Nền trong suốt
-        translucent={true} // Cho phép nội dung tràn lên status bar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
       />
-
-      {/* 2. HEADER (Đã fix padding cho Android) */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -253,11 +216,9 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         >
           <Icon name="chevron-back" size={28} color="#fff" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle} numberOfLines={1}>
           Chi tiết sản phẩm
         </Text>
-
         <TouchableOpacity onPress={toggleBookmark} style={styles.headerBtn}>
           <Icon
             name={bookmark ? 'heart' : 'heart-outline'}
@@ -267,17 +228,12 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ẢNH SẢN PHẨM */}
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
           <Image
             source={{ uri: product.images?.[currentImageIndex] }}
             style={styles.image}
           />
-          {/* Nút điều hướng ảnh */}
           {product.images?.length > 1 && (
             <>
               <TouchableOpacity
@@ -301,15 +257,14 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           )}
         </View>
 
-        {/* THÔNG TIN CHI TIẾT (Card bo tròn trượt lên) */}
         <View style={styles.infoContainer}>
           <Text style={styles.productName}>{product.name}</Text>
-
           <View style={styles.priceRow}>
+            {/* --- FIX LỖI CRASH Ở ĐÂY: Dùng optional chaining --- */}
             <Text style={styles.priceText}>
-              {product.price.toLocaleString()} ₫
+              {(product?.price ?? 0).toLocaleString()} ₫
             </Text>
-            {/* Rating giả lập hoặc lấy từ API */}
+            
             <View style={styles.ratingBox}>
               <Icon name="star" size={16} color="#fbbf24" />
               <Text style={styles.ratingText}>4.8</Text>
@@ -318,10 +273,8 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
               </Text>
             </View>
           </View>
-
           <View style={styles.divider} />
 
-          {/* CHỌN SIZE */}
           <Text style={styles.sectionTitle}>Chọn Size</Text>
           <View style={styles.sizeList}>
             {product.sizes?.map((s: any) => (
@@ -351,7 +304,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
             ))}
           </View>
 
-          {/* SỐ LƯỢNG */}
           <View style={styles.quantitySection}>
             <Text style={styles.sectionTitle}>Số lượng</Text>
             <View style={styles.quantityControl}>
@@ -372,17 +324,12 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           </View>
 
           <View style={styles.divider} />
-
-          {/* MÔ TẢ */}
           <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
           <Text style={styles.descriptionText}>{product.description}</Text>
-
-          {/* Padding bottom để nội dung không bị Footer che */}
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
 
-      {/* FOOTER CỐ ĐỊNH */}
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Tổng cộng</Text>
@@ -402,16 +349,11 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
 export default ProductDetailScreen;
 
-// --- STYLES ---
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#f9fafb' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  // --- HEADER STYLE QUAN TRỌNG ---
   header: {
-    // paddingTop = Chiều cao status bar (chỉ Android cần xử lý thủ công khi translucent=true)
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    // Height = paddingTop + chiều cao mong muốn của header (50px)
     height: (Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0) + 56,
     backgroundColor: PRIMARY_COLOR,
     flexDirection: 'row',
@@ -434,12 +376,10 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-
-  // --- IMAGE & SCROLL ---
   scrollContainer: { flex: 1 },
   imageContainer: {
     width: width,
-    height: width * 0.9, // Chiều cao ảnh bằng 90% chiều rộng màn hình
+    height: width * 0.9,
     backgroundColor: '#fff',
     position: 'relative',
     justifyContent: 'center',
@@ -468,13 +408,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   imageCounterText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-
-  // --- INFO SHEET ---
   infoContainer: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    marginTop: -24, // Kéo lên đè lên ảnh 1 chút
+    marginTop: -24,
     paddingHorizontal: 20,
     paddingTop: 24,
     flex: 1,
@@ -490,7 +428,6 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 8,
   },
-
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -513,7 +450,6 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   reviewCount: { fontSize: 12, color: '#6b7280' },
-
   divider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 16 },
   sectionTitle: {
     fontSize: 16,
@@ -521,8 +457,6 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 12,
   },
-
-  // --- SIZE ---
   sizeList: { flexDirection: 'row', flexWrap: 'wrap' },
   sizeItem: {
     minWidth: 48,
@@ -540,8 +474,6 @@ const styles = StyleSheet.create({
   sizeItemSelected: { borderColor: PRIMARY_COLOR, backgroundColor: '#f0fdfa' },
   sizeText: { fontSize: 14, fontWeight: '500', color: '#374151' },
   sizeTextSelected: { color: PRIMARY_COLOR, fontWeight: '700' },
-
-  // --- QUANTITY ---
   quantitySection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -564,15 +496,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
-
   descriptionText: {
     fontSize: 15,
     color: '#4b5563',
     lineHeight: 24,
     textAlign: 'justify',
   },
-
-  // --- FOOTER ---
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -585,7 +514,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12, // Handle safe area iOS bottom
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
     elevation: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },

@@ -37,10 +37,12 @@ const FavoriteScreen = ({ navigation }: any) => {
 
       const productDetails = data.map((fav: any) => ({
         _id: fav.productId,
-        name: fav.product?.name || 'Không rõ tên',
-        price: fav.product?.price || 0,
-        image: fav.product?.image,
-        type: fav.type || 'normal',
+        name: fav.product?.name || fav.saleProduct?.name || 'Không rõ tên',
+        // Ưu tiên lấy giá sale nếu có
+        price: fav.saleProduct?.discount_price || fav.product?.price || 0,
+        image: fav.product?.image || fav.saleProduct?.image,
+        // QUAN TRỌNG: Lấy type để phân biệt
+        type: fav.type || 'normal', 
       }));
 
       const filtered = productDetails.filter((p) => p !== null);
@@ -96,11 +98,20 @@ const FavoriteScreen = ({ navigation }: any) => {
             <View style={{ flex: 1, margin: 8 }}>
               <TouchableOpacity
                 activeOpacity={0.9}
-                onPress={() =>
-                  navigation.navigate('ProductDT', {
-                    productId: item._id,
-                  })
-                }>
+                onPress={() => {
+                  // --- LOGIC SỬA ĐỔI TẠI ĐÂY ---
+                  // Nếu là sale -> sang màn hình SaleProductDetail
+                  // Nếu là thường -> sang màn hình ProductDT
+                  if (item.type === 'sale') {
+                    navigation.navigate('SaleProductDetail', {
+                      productId: item._id,
+                    });
+                  } else {
+                    navigation.navigate('ProductDT', {
+                      productId: item._id,
+                    });
+                  }
+                }}>
                 <Item item={item} />
               </TouchableOpacity>
             </View>
@@ -128,11 +139,12 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 5,
+    // prt: 5,
     height: 230,
     width: 180,
     borderRadius: 16,
     elevation: 5,
+    paddingTop: 5,
   },
   imgCard: {
     width: width / 2 - 32,

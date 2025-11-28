@@ -365,7 +365,7 @@ export default function CartScreen({ navigation }: any) {
           <Icon name="cart-outline" size={80} color="#ccc" />
           <Text style={styles.empty}>Giỏ hàng trống</Text>
           <Text style={styles.emptySubtext}>Hãy thêm sản phẩm vào giỏ để tiếp tục</Text>
-          <TouchableOpacity style={styles.continueShopping} onPress={() => navigation.navigate('Home')}>
+          <TouchableOpacity style={styles.continueShopping} onPress={() => navigation.navigate('MainTab')}>
             <Text style={styles.continueShoppingText}>Tiếp tục mua sắm</Text>
           </TouchableOpacity>
         </View>
