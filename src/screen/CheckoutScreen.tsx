@@ -252,8 +252,14 @@ export default function CheckoutScreen({ route, navigation }: any) {
         status: 'waiting',
         order_code: generateOrderCode(),
         // Backend cần code voucher để check logic, nhưng thường api create order nhận voucherId
-        voucherCode: appliedVoucher ? appliedVoucher.code : null,
-        voucherDiscount,
+        voucher: appliedVoucher
+  ? {
+      voucherId: appliedVoucher._id,
+      code: appliedVoucher.code,
+      discountAmount: voucherDiscount
+    }
+  : null,
+
       };
 
       await API.post('/orders', orderPayload);
@@ -358,7 +364,10 @@ export default function CheckoutScreen({ route, navigation }: any) {
   };
 
   const subtotal = calculateSubtotal();
-  const shippingFee = 30000;
+  let shippingFee = 30000;
+  if (subtotal >= 200000) {
+  shippingFee = 0;
+}
   const voucherDiscount = calculateVoucherDiscount(subtotal, shippingFee);
   const total = subtotal + shippingFee - voucherDiscount;
 
