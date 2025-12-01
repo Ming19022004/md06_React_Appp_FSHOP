@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,25 @@ import {
   StyleSheet,
   NativeSyntheticEvent,
   NativeScrollEvent,
-} from "react-native";
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 
-import ProductCard from "./productCard/ProductCard";
-import SaleProductCard from "./productCard/SaleProductCard";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "../api";
-import { fetchAllProducts } from "../services/ProductServices";
-import { fetchSaleProducts } from "../services/SaleProduct";
-import { fetchBanners } from "../services/BannerServices";
-import { fetchCategories } from "../services/CategoryServices";
+import ProductCard from './productCard/ProductCard';
+import SaleProductCard from './productCard/SaleProductCard';
 
-const { width } = Dimensions.get("window");
+import { fetchAllProducts } from '../services/ProductServices';
+import { fetchBanners } from '../services/BannerServices';
+import { fetchCategories } from '../services/CategoryServices';
+import { fetchSaleProducts } from '../services/SaleProduct';
+
+const { width } = Dimensions.get('window');
+
+// Color scheme
+const PRIMARY = '#0f766e';
+const ORANGE = '#f97316';
+const LIGHT_ORANGE_BG = '#fff7ed'; // Màu nền nhẹ cho Flash Sale
+const LIGHT_BG = '#f8faf9';
+const BORDER_COLOR = '#e8f0ed';
 
 // Layout constants
 const HORIZONTAL_PADDING = 12;
@@ -37,6 +44,7 @@ const HomeScreen = ({ navigation }: any) => {
   const [cartCount, setCartCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => {
     loadAllData();
@@ -44,39 +52,37 @@ const HomeScreen = ({ navigation }: any) => {
 
   const loadAllData = async () => {
     try {
-      const [bannerData, categoryData, productData] =
+      const [bannerData, categoryData, productData, saleProductData] =
         await Promise.all([
           fetchBanners(),
           fetchCategories(),
           fetchAllProducts(),
-//           fetchSaleProducts(),
+          fetchSaleProducts(),
         ]);
 
       setBanners(bannerData);
       setCategories(categoryData);
       setProducts(productData);
-      setSaleProducts([]);
-      console.log("📦 Kết quả API sản phẩm:", productData);
+      setSaleProducts(saleProductData);
     } catch (error) {
-      console.error("Lỗi khi tải dữ liệu:", error);
+      console.error('Lỗi khi tải dữ liệu:', error);
     }
   };
 
   const handleBannerPress = (banner: any) => {
-    navigation.navigate("BannerDT", { banner });
+    navigation.navigate('BannerDT', { banner });
   };
 
+  // ... (Giữ nguyên logic banner auto scroll) ...
   useEffect(() => {
     if (banners.length === 0) return;
-
     const interval = setInterval(() => {
-      setActiveIndex((prev) => {
+      setActiveIndex(prev => {
         const nextIndex = (prev + 1) % banners.length;
         scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
         return nextIndex;
       });
     }, 3000);
-
     return () => clearInterval(interval);
   }, [banners]);
 
@@ -85,177 +91,208 @@ const HomeScreen = ({ navigation }: any) => {
     setActiveIndex(idx);
   };
 
-  const Section = ({ title, onSeeMore, children }: any) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {onSeeMore && (
-          <TouchableOpacity onPress={onSeeMore}>
-            <Text style={styles.seeMore}>Xem thêm...</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-      {children}
-    </View>
-  );
-
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <TouchableOpacity style={styles.header}>
-        <Text style={styles.text}>Sports Shop</Text>
-      </TouchableOpacity>
+      <View style={styles.statusBarSpacer} />
 
-      {/* Top Bar */}
-      <View style={styles.topBar}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerGreeting}>Xin chào</Text>
+            <Text style={styles.headerTitle}>COOLMATE</Text>
+          </View>
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => navigation.navigate('Chat')}
+            >
+              <Icon name="chatbubble-ellipses-outline" size={22} color="#fff" />
+              {chatUnread > 0 && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.headerBadgeText}>{chatUnread}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.headerIconButton, { marginLeft: 8 }]}
+              onPress={() => navigation.navigate('Notification')}
+            >
+              <Icon name="notifications-outline" size={26} color="#fff" />
+              {unreadCount > 0 && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.headerBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchBarContainer}>
         <TouchableOpacity
           style={styles.searchBox}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate("Search")}
+          onPress={() => navigation.navigate('Search')}
         >
-          <Text style={{ fontSize: 18, marginHorizontal: 10 }}>🔍</Text>
-          <Text style={styles.input}>Tìm kiếm ở đây</Text>
+          <Icon
+            name="search-outline"
+            size={18}
+            color={PRIMARY}
+            style={styles.searchIcon}
+          />
+          <Text style={styles.searchPlaceholder}>Tìm sản phẩm...</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.navigate("Cart")}
+          style={styles.cartButton}
+          onPress={() => navigation.navigate('Cart')}
         >
-          <View style={{ position: "relative" }}>
-            <Text style={{ fontSize: 22, color: "#0f766e" }}>🛒</Text>
-            {cartCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{cartCount}</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.navigate("Chat")}
-        >
-          <Text style={{ fontSize: 22 }}>💬</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => navigation.navigate("Notification")}
-        >
-          <View style={{ position: "relative" }}>
-            <Text style={{ fontSize: 22 }}>🔔</Text>
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
+          <Icon name="cart-outline" size={24} color="#fff" />
+          {cartCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Body */}
       <ScrollView
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ backgroundColor: "#EEEEEE" }}
+        contentContainerStyle={{ backgroundColor: LIGHT_BG, paddingBottom: 20 }}
       >
-
         {/* Banners */}
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          style={styles.bannerWrapper}
-        >
-          {banners.map((b, index) => (
-            <TouchableOpacity
-              key={b.id || `banner-${index}`}
-              activeOpacity={0.8}
-              onPress={() => handleBannerPress(b)}
-            >
-              <View style={styles.bannerContainer}>
-                <Image source={{ uri: b.banner }} style={styles.bannerImage} />
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.bannerSection}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={styles.bannerWrapper}
+          >
+            {banners.map((b, index) => (
+              <TouchableOpacity
+                key={b.id || `banner-${index}`}
+                activeOpacity={0.9}
+                onPress={() => handleBannerPress(b)}
+              >
+                <View style={styles.bannerContainer}>
+                  <Image
+                    source={{ uri: b.banner }}
+                    style={styles.bannerImage}
+                  />
+                  <View style={styles.bannerOverlay} />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-        <View style={styles.dotsContainer}>
-          {banners.map((b, i) => (
-            <View
-              key={b.id || `dot-${i}`}
-              style={[styles.dot, i === activeIndex && styles.activeDot]}
-            />
-          ))}
+          <View style={styles.dotsContainer}>
+            {banners.map((b, i) => (
+              <View
+                key={b.id || `dot-${i}`}
+                style={[styles.dot, i === activeIndex && styles.activeDot]}
+              />
+            ))}
+          </View>
         </View>
-        {/* Danh mục */}
-        <Section title="Danh mục">
+
+        {/* Categories */}
+        <View style={styles.categoriesHighlight}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Danh mục</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeMore}>Tất cả</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
+            contentContainerStyle={styles.categoriesScrollContent}
           >
-            <View style={styles.categoryRow}>
-              {categories.map((cat, index) => (
-                <TouchableOpacity
-                  key={cat.code || `cat-${index}`}
-                  style={styles.categoryItem}
-                  onPress={() =>
-                    navigation.navigate("Category", {
-                      code: cat.code,
-                      title: cat.name,
-                    })
-                  }
-                >
-                {/*
+            {categories.slice(0, 6).map((cat, index) => (
+              <TouchableOpacity
+                key={cat.code || `cat-${index}`}
+                style={styles.categoryBadge}
+                onPress={() =>
+                  navigation.navigate('Category', {
+                    code: cat.code,
+                    title: cat.name,
+                  })
+                }
+              >
+                <View style={styles.categoryBadgeImageWrapper}>
                   <Image
                     source={{ uri: cat.image }}
-                    style={styles.categoryImage}
+                    style={styles.categoryBadgeImage}
                   />
-                  */}
-                      <Text style={styles.categoryText} numberOfLines={1}>
-                        {cat.name}
-                      </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                </View>
+                <Text style={styles.categoryBadgeName} numberOfLines={1}>
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
-        </Section>
-
-        {/* Khuyến mãi */}
-        {/*
-        <View>
-          <FlatList
-            data={saleProducts.slice(0, 4)}
-            keyExtractor={(item, index) => item._id || `sale-${index}`}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: "space-between" }}
-            contentContainerStyle={{
-              paddingHorizontal: HORIZONTAL_PADDING,
-              paddingTop: 4,
-            }}
-            renderItem={({ item }) => (
-              <View style={styles.gridItem}>
-                <SaleProductCard item={item} navigation={navigation} />
-              </View>
-            )}
-            scrollEnabled={false}
-          />
         </View>
-    */}
-        {/* Tất cả sản phẩm */}
-        <Section title="Tất cả sản phẩm">
+
+      
+        {saleProducts.length > 0 && (
+          <View style={styles.flashSaleContainer}>
+            {/* Header của Flash Sale */}
+            <TouchableOpacity style={styles.flashSaleHeader}>
+              <View style={styles.flashSaleTitleRow}>
+                <Icon name="flash" size={20} color={ORANGE} style={{marginRight: 6}} />
+                <View>
+                    <Text style={styles.flashSaleTitleText}>FLASH SALE</Text>
+                    {/* <Text style={styles.flashSaleSubtitleText}>Kết thúc trong 02:15:30</Text> */}
+                </View>
+              </View>
+              <View style={styles.viewAllBtn}>
+                 <Text style={styles.viewAllText}>Xem tất cả</Text>
+                 <Icon name="chevron-forward" size={16} color="#666" />
+              </View>
+            </TouchableOpacity>
+
+            {/* List sản phẩm */}
+            <FlatList
+              data={saleProducts}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item, index) => item._id || `sale-${index}`}
+              contentContainerStyle={styles.flashSaleListContent}
+              // 🔥 QUAN TRỌNG: Thêm khoảng cách giữa các item
+              ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+              renderItem={({ item }) => (
+                <View style={styles.saleItemWrapper}>
+                    <SaleProductCard item={item} navigation={navigation} />
+                </View>
+              )}
+            />
+          </View>
+        )}
+        {/* ======================================================= */}
+
+
+        {/* All Products */}
+        <View style={styles.productsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Gợi ý cho bạn</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AllProducts')}
+            >
+              <Text style={styles.seeMore}>Xem thêm</Text>
+            </TouchableOpacity>
+          </View>
           <FlatList
             data={products}
             keyExtractor={(item, index) => item._id || `product-${index}`}
             numColumns={2}
-            columnWrapperStyle={{ justifyContent: "space-between" }}
-            contentContainerStyle={{
-              paddingHorizontal: HORIZONTAL_PADDING,
-              marginBottom: 60,
-            }}
+            columnWrapperStyle={styles.columnWrapper}
+            contentContainerStyle={styles.productsContent}
             renderItem={({ item }) => (
               <View style={styles.gridItem}>
                 <ProductCard item={item} navigation={navigation} />
@@ -263,7 +300,7 @@ const HomeScreen = ({ navigation }: any) => {
             )}
             scrollEnabled={false}
           />
-        </Section>
+        </View>
       </ScrollView>
     </View>
   );
@@ -272,118 +309,236 @@ const HomeScreen = ({ navigation }: any) => {
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: { backgroundColor: "#0f766e", padding: 10, alignItems: "center" },
-  text: { fontSize: 23, fontWeight: "bold", color: "#fff" },
-  topBar: { flexDirection: "row", margin: 10, alignItems: "center" },
+  container: { flex: 1, backgroundColor: '#fff' },
+  statusBarSpacer: { height: 30, backgroundColor: PRIMARY },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    height: 60,
+    backgroundColor: PRIMARY,
+    elevation: 6,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerGreeting: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 2,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 1.5,
+  },
+  headerIconButton: {
+    padding: 8,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  headerIconsRow: { flexDirection: 'row', alignItems: 'center' },
+  headerBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: ORANGE,
+    borderRadius: 9,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: PRIMARY,
+  },
+  headerBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+  },
   searchBox: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 19,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    height: 40,
-    borderColor: "#ccc",
-  },
-  input: { flex: 1, fontSize: 14 },
-  iconButton: { marginLeft: 10, padding: 6 },
-  badge: {
-    position: "absolute",
-    top: -4,
-    right: -8,
-    backgroundColor: "red",
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: { color: "white", fontSize: 10, fontWeight: "bold" },
-  bannerWrapper: {
-    height: width * 0.56,
-    marginTop: 5,
-  },
-  bannerContainer: {
-    width: width - 20,
-    height: width * 0.5,
-    marginHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    height: 44,
     borderRadius: 12,
-    overflow: "hidden",
+    backgroundColor: LIGHT_BG,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+  },
+  searchIcon: { marginRight: 8 },
+  searchPlaceholder: { flex: 1, fontSize: 14, color: '#999' },
+  cartButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: ORANGE,
+    borderRadius: 10,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  cartBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  bannerSection: { marginVertical: 12 },
+  bannerWrapper: { height: width * 0.48 },
+  bannerContainer: {
+    width: width,
+    height: width * 0.48,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
   },
   bannerImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    resizeMode: 'cover',
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 12,
+    right: 12,
+    bottom: 0,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   dotsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 6,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ccc",
-    marginHorizontal: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
-  activeDot: { backgroundColor: "#000" },
-  section: { marginVertical: 10 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: HORIZONTAL_PADDING,
-    marginBottom: 5,
-  },
+  activeDot: { backgroundColor: PRIMARY, width: 28, borderRadius: 3 },
+  categoriesHighlight: { marginVertical: 16, backgroundColor: '#fff' },
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 5,
-    margin: 20,
+    marginBottom: 12,
   },
-  seeMore: { color: "orange", marginLeft: 15, marginTop: 5 },
-  gridItem: {
-    width: CARD_WIDTH,
-    marginBottom: GRID_GAP,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    letterSpacing: 0.3,
   },
-  categoryRow: {
-    flexDirection: "row",
-    gap: 10,
+  seeMore: { fontSize: 13, fontWeight: '700', color: ORANGE },
+  categoriesScrollContent: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    gap: 8,
+    paddingBottom: 12,
   },
-  categoryItem: {
-    backgroundColor: "#eee",
-    borderRadius: 50,
-    width: 90,
-    height: 90,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    margin: 10,
+  categoryBadge: { alignItems: 'center', gap: 8 },
+  categoryBadgeImageWrapper: {
+    width: 70,
+    height: 70,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: LIGHT_BG,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: PRIMARY,
+    elevation: 3,
   },
-  categoryImage: {
-    width: "100%",
-    height: "100%",
+  categoryBadgeImage: { width: 80, height: 80, resizeMode: 'cover' },
+  categoryBadgeName: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    width: 70,
+    color: '#333',
   },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    textAlign: "center",
-    marginTop: 4,
-    paddingHorizontal: 4,
+
+  /* ====================== FLASH SALE STYLES ====================== */
+  flashSaleContainer: {
+    marginVertical: 12,
+    backgroundColor: LIGHT_ORANGE_BG, // Nền màu cam rất nhạt làm nổi bật khối
+    paddingVertical: 16,
+    borderTopWidth: 4,
+    borderTopColor: ORANGE, // Đường viền trên cùng màu cam đậm
   },
-  categoryItem: {
-    backgroundColor: "#eee",
-    borderRadius: 50,
-    width: 90,
-    height: 90,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    margin: 10,
-    paddingHorizontal: 4,
-  }
+  flashSaleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  flashSaleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flashSaleTitleText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: ORANGE,
+    fontStyle: 'italic',
+  },
+  flashSaleSubtitleText: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 2,
+  },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 2,
+  },
+  flashSaleListContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  saleItemWrapper: {
+    // Nếu SaleProductCard của bạn không có shadow, thêm vào đây
+    // backgroundColor: '#fff',
+    // borderRadius: 8,
+    // elevation: 2,
+  },
+  /* =============================================================== */
+
+  productsSection: { marginVertical: 16 },
+  columnWrapper: { justifyContent: 'space-between', gap: GRID_GAP },
+  productsContent: { paddingHorizontal: HORIZONTAL_PADDING, paddingBottom: 60 },
+  gridItem: { width: CARD_WIDTH, marginBottom: GRID_GAP },
 });

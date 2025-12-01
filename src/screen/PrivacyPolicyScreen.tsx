@@ -24,7 +24,7 @@ const PrivacyPolicyScreen = () => {
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
                 <Text style={styles.sectionTitle}>1. Mục đích thu thập thông tin</Text>
                 <Text style={styles.text}>
-                    Sports Shop thu thập dữ liệu cá nhân nhằm mục đích xác nhận đơn hàng, giao hàng, liên hệ hỗ trợ khách hàng và gửi thông tin khuyến mãi nếu người dùng đồng ý.
+                    CoolMate thu thập dữ liệu cá nhân nhằm mục đích xác nhận đơn hàng, giao hàng, liên hệ hỗ trợ khách hàng và gửi thông tin khuyến mãi nếu người dùng đồng ý.
                 </Text>
 
                 <Text style={styles.sectionTitle}>2. Loại thông tin thu thập</Text>
@@ -53,7 +53,7 @@ const PrivacyPolicyScreen = () => {
                 <Text style={styles.sectionTitle}>5. Bảo mật thông tin khách hàng</Text>
                 <Text style={styles.text}>
                     - Chúng tôi sử dụng các biện pháp bảo mật như mã hóa, xác thực và tường lửa để đảm bảo thông tin cá nhân không bị truy cập trái phép.{'\n'}
-                    - Sports Shop cam kết không bán, trao đổi hay chia sẻ thông tin khách hàng cho bên thứ ba mà không có sự đồng ý từ bạn, trừ khi có yêu cầu pháp lý.
+                    - CoolMate cam kết không bán, trao đổi hay chia sẻ thông tin khách hàng cho bên thứ ba mà không có sự đồng ý từ bạn, trừ khi có yêu cầu pháp lý.
                 </Text>
 
                 <Text style={styles.sectionTitle}>6. Quyền của người dùng</Text>
@@ -64,7 +64,7 @@ const PrivacyPolicyScreen = () => {
 
                 <Text style={styles.sectionTitle}>7. Đơn vị thu thập và quản lý thông tin</Text>
                 <Text style={styles.text}>
-                    CÔNG TY TNHH Sports Shop{'\n'}
+                    CÔNG TY TNHH CoolMate {'\n'}
                     Địa chỉ: 123 Đường Thời Trang, Q.1, TP.HCM{'\n'}
                     Hotline: 1900 1234{'\n'}
                     Email: support@f7shop.vn
