@@ -19,6 +19,7 @@ import CheckoutVNPay from './src/screen/payment/CheckoutVNPay';
 import CheckVnPayMent from './src/screen/payment/CheckVnPayMent';
 import NotificationScreen from "./src/screen/NotificationScreen";
 import SaleProductDetail from './src/screen/SaleProductDetail';
+import ReviewScreen from './src/screen/ReviewScreen';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -119,6 +120,7 @@ export default function App() {
         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
         <Stack.Screen name="Notification" component={NotificationScreen} />
         <Stack.Screen name="SaleProductDetail" component={SaleProductDetail} />
+         <Stack.Screen name="ReviewScreen" component={ReviewScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
