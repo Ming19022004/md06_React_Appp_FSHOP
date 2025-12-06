@@ -32,7 +32,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
   const [bookmark, setBookMark] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Tính tổng tiền an toàn
   const totalPrice = product ? product.price * quantity : 0;
 
   useEffect(() => {
@@ -141,7 +140,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         return;
       }
 
-      // --- LOGIC ALERT BẠN YÊU CẦU ---
       Alert.alert(
         'Thêm thành công!',
         `Đã thêm ${quantity} sản phẩm vào giỏ hàng.`,
@@ -260,7 +258,6 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         <View style={styles.infoContainer}>
           <Text style={styles.productName}>{product.name}</Text>
           <View style={styles.priceRow}>
-            {/* --- FIX LỖI CRASH Ở ĐÂY: Dùng optional chaining --- */}
             <Text style={styles.priceText}>
               {(product?.price ?? 0).toLocaleString()} ₫
             </Text>
@@ -326,6 +323,35 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           <View style={styles.divider} />
           <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
           <Text style={styles.descriptionText}>{product.description}</Text>
+
+          {/* --- Comment Box --- */}
+          <View style={styles.commentBox}>
+            <Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
+            {comments.length === 0 ? (
+              <Text style={{ color: '#6b7280', fontStyle: 'italic' }}>
+                Chưa có đánh giá nào.
+              </Text>
+            ) : (
+              <ScrollView
+                style={{ maxHeight: 200 }}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+              >
+                {comments.map((c, index) => (
+                  <View key={index} style={styles.commentItem}>
+                    <Text style={styles.commentUser}>{c.userName || 'Người dùng'}</Text>
+                    <Text style={styles.commentText}>{c.content}</Text>
+                    {c.createdAt && (
+                      <Text style={styles.commentTime}>
+                        {new Date(c.createdAt).toLocaleDateString()}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
@@ -501,6 +527,28 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     lineHeight: 24,
     textAlign: 'justify',
+  },
+  commentBox: {
+    marginTop: 24,
+  },
+  commentItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  commentUser: {
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  commentText: {
+    color: '#4b5563',
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  commentTime: {
+    color: '#6b7280',
+    fontSize: 12,
   },
   footer: {
     position: 'absolute',
