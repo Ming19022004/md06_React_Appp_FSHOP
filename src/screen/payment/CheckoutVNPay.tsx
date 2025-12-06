@@ -3,16 +3,129 @@ import {
     View, Text, FlatList, StyleSheet, Alert, Linking, ActivityIndicator, TouchableOpacity, Image,
 } from "react-native";
 import axios from "axios";
-import API from "../../api"; // �� import API chuẩn
+import API from "../../api"; // ✅ Sử dụng API instance cho các endpoint thông thường
+import { BASE_URL } from "../../constants"; // ✅ Import BASE_URL từ constants
+import Icon from 'react-native-vector-icons/Ionicons';
+import { getVNPayReturnUrl, debugVNPayConfig } from "../../config/vnpayConfig"; // ✅ Import VNPay config
 
-// ✅ Cấu hình URL backend - thay đổi theo môi trường
-const BACKEND_URL = __DEV__
-    ? "http://192.168.0.103:3002"  // IP thật của máy bạn
-    : "http://localhost:3002";     // Production URL
+// Theme colors
+const PRIMARY = '#0f766e';
+const ORANGE = '#f97316';
+const RED = '#ef4444';
+const GREEN = '#10b981';
+const AMBER = '#f59e0b';
+
+// ✅ Sử dụng BASE_URL từ constants để đồng nhất
+const BACKEND_URL = BASE_URL;
+
+// Custom Image component với error handling
+const CustomImage = ({ source, style, ...props }: any) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    const handleImageError = () => {
+        console.log('❌ Image failed to load:', source?.uri);
+        setImageError(true);
+        setImageLoading(false);
+    };
+
+    const handleImageLoad = () => {
+        console.log('✅ Image loaded successfully:', source?.uri);
+        setImageLoading(false);
+    };
+
+    // Reset state khi source thay đổi
+    React.useEffect(() => {
+        setImageError(false);
+        setImageLoading(true);
+    }, [source?.uri]);
+
+    if (imageError) {
+        return (
+            <View style={[style, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                <Icon name="image-outline" size={30} color="#ccc" />
+                <Text style={{ fontSize: 10, color: '#ccc', marginTop: 5 }}>No Image</Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={style}>
+            <Image
+                source={source}
+                style={[style, { position: 'absolute' }]}
+                resizeMode="cover"
+                onError={handleImageError}
+                onLoad={handleImageLoad}
+                {...props}
+            />
+            {imageLoading && (
+                <View style={[style, { position: 'absolute', backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="small" color={ORANGE} />
+                </View>
+            )}
+        </View>
+    );
+};
+
+// Helper function để lấy URL ảnh sản phẩm
+const getProductImageUrl = (product: any) => {
+    if (!product) {
+        console.log('❌ Product is null/undefined');
+        return 'https://via.placeholder.com/100';
+    }
+
+    console.log('🔍 Checking product image fields:', {
+        hasImages: !!product.images,
+        imagesLength: product.images?.length,
+        imagesValue: product.images,
+        hasImage: !!product.image,
+        imageValue: product.image
+    });
+
+    // Theo model Product, trường ảnh là images (array)
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+        console.log('✅ Using images[0]:', product.images[0]);
+        return product.images[0];
+    }
+
+    // Fallback cho trường hợp có trường image riêng lẻ
+    if (product.image) {
+        console.log('✅ Using image field:', product.image);
+        return product.image;
+    }
+
+    // Fallback
+    console.log('❌ No image found, using fallback');
+    return 'https://hidosport.vn/wp-content/uploads/2024/06/quan-ao-man-city-mau-xanh-san-nha-2025-ao-player.webp';
+};
 
 const CheckoutVNPay = ({ route, navigation }: any) => {
     const { selectedItems, user, voucher } = route.params;
     const [loading, setLoading] = useState(false);
+
+    // Debug selectedItems
+    console.log('🔍 SelectedItems received:', {
+        length: selectedItems?.length,
+        items: selectedItems?.map((item: any) => ({
+            id: item._id,
+            product_id: item.product_id?._id,
+            name: item.product_id?.name || item.name,
+            images: item.product_id?.images || item.images,
+            image: item.product_id?.image || item.image
+        }))
+    });
+
+    // Test URL ảnh từ hidosport.vn
+    console.log('🧪 Testing image URL:', 'https://hidosport.vn/wp-content/uploads/2024/06/quan-ao-man-city-mau-xanh-san-nha-2025-ao-player.webp');
+
+    // Test với một số URL ảnh khác
+    const testUrls = [
+        'https://hidosport.vn/wp-content/uploads/2024/06/quan-ao-man-city-mau-xanh-san-nha-2025-ao-player.webp',
+        'https://picsum.photos/90/90',
+        'https://via.placeholder.com/90x90/FF0000/FFFFFF?text=Test'
+    ];
+    console.log('🧪 Test URLs:', testUrls);
 
     const generateOrderCode = () => {
         const now = new Date();
@@ -48,37 +161,59 @@ const CheckoutVNPay = ({ route, navigation }: any) => {
     const handlePayment = async () => {
         setLoading(true);
         try {
+            // ✅ Validation trước khi tạo đơn hàng
+            if (!user?._id) {
+                Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng");
+                return;
+            }
+
+            if (!user?.address) {
+                Alert.alert("Lỗi", "Vui lòng cập nhật địa chỉ giao hàng");
+                navigation.navigate('PersonalInfo');
+                return;
+            }
+
+            if (!selectedItems || selectedItems.length === 0) {
+                Alert.alert("Lỗi", "Không có sản phẩm nào được chọn");
+                return;
+            }
+
             const orderCode = generateOrderCode();
             const subtotal = calculateSubtotal();
             const discount = calculateDiscount();
             const shippingFee = 30000;
             const finalTotal = subtotal + shippingFee - discount;
 
+            // ✅ Debug VNPay configuration
+            debugVNPayConfig();
+
+            // ✅ Sửa lại payload để phù hợp với backend API
             const payload = {
                 userId: user._id,
                 items: selectedItems.map((item: any) => ({
                     id_product: item.product_id?._id || item._id,
                     name: item.product_id?.name || item.name,
-                    purchaseQuantity: item.quantity,
+                    purchaseQuantity: item.quantity || 1,
                     price: item.product_id?.price || item.price,
+                    size: item.size
                 })),
-                totalPrice: finalTotal,
                 shippingFee,
-                discount,
-                finalTotal,
-                paymentMethod: "online",
+                voucher: voucher ? {
+                    voucherId: voucher.id || voucher._id,
+                    code: voucher.code
+                } : undefined,
+                paymentMethod: "vnpay",
                 shippingAddress: user.address,
-                status: "waiting",
                 order_code: orderCode,
-                returnUrl: `${BACKEND_URL}/vnpay/payment-result`, // ✅ Thêm returnUrl đúng
-                ...(voucher?.id && { voucherId: voucher.id }),
+                // ✅ Sử dụng cấu hình VNPay để lấy URL return đúng cho platform
+                returnUrl: getVNPayReturnUrl()
             };
 
-            console.log("🔄 Gửi payload:", payload);
+            console.log("📦 Gửi payload:", payload);
             console.log("🌐 Backend URL:", BACKEND_URL);
 
-            // ✅ Sử dụng URL đúng thay vì localhost
-            const res = await axios.post(`${BACKEND_URL}/vnpay/create_order_and_payment`, payload);
+            // ✅ Sử dụng axios trực tiếp cho VNPay endpoints
+            const res = await axios.post(`${BASE_URL}/vnpay/create_order_and_payment`, payload);
 
             console.log("📦 Response từ server:", res.data);
 
@@ -115,7 +250,12 @@ const CheckoutVNPay = ({ route, navigation }: any) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Thanh toán VNPay</Text>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backIcon}>
+                    <Icon name="chevron-back" size={24} color={PRIMARY} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Thanh toán VNPay</Text>
+            </View>
 
             <Text style={styles.subtitle}>Sản phẩm đã chọn:</Text>
             <FlatList
@@ -124,14 +264,26 @@ const CheckoutVNPay = ({ route, navigation }: any) => {
                 keyExtractor={(_, index) => index.toString()}
                 renderItem={({ item }) => {
                     const product = item.product_id || item;
+                    console.log('🔍 Product data:', {
+                        name: product.name,
+                        images: product.images,
+                        image: product.image,
+                        finalImageUrl: getProductImageUrl(product),
+                    });
+
                     return (
                         <View style={styles.itemRow}>
-                            <Image source={{ uri: product.image }} style={styles.image} />
+                            {/* Sử dụng CustomImage để load ảnh */}
+                            <CustomImage
+                                source={{ uri: getProductImageUrl(product) }}
+                                style={styles.image}
+                            />
+
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.name}>{product.name}</Text>
                                 <Text>Số lượng: {item.quantity}</Text>
                                 <Text>Đơn giá: {product.price.toLocaleString()}₫</Text>
-                                <Text style={{ color: "orange", fontWeight: "bold" }}>
+                                <Text style={{ color: ORANGE, fontWeight: "bold" }}>
                                     Thành tiền: {(product.price * item.quantity).toLocaleString()}₫
                                 </Text>
                             </View>
@@ -139,7 +291,6 @@ const CheckoutVNPay = ({ route, navigation }: any) => {
                     );
                 }}
             />
-
             <View style={styles.totalBlock}>
                 <Text style={styles.total}>Tạm tính: {calculateSubtotal().toLocaleString()}₫</Text>
                 {voucher && (
@@ -169,23 +320,86 @@ const CheckoutVNPay = ({ route, navigation }: any) => {
 export default CheckoutVNPay;
 
 const styles = StyleSheet.create({
-    container: { padding: 20, flex: 1, backgroundColor: "#fff" },
-    title: { fontSize: 22, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
-    subtitle: { fontSize: 16, fontWeight: "600", marginBottom: 10 },
-    itemRow: {
-        flexDirection: "row", marginBottom: 12, paddingBottom: 8,
-        borderBottomWidth: 1, borderColor: "#eee",
+    container: { flex: 1, padding: 15, backgroundColor: '#fffef6' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 55,
+        marginBottom: 10,
+        position: 'relative',
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
     },
-    image: { width: 80, height: 80, marginRight: 10, borderRadius: 6 },
-    name: { fontSize: 16, fontWeight: "bold" },
-    totalBlock: { marginTop: 20, borderTopWidth: 1, paddingTop: 12, borderColor: "#ddd" },
-    total: { fontSize: 16, marginVertical: 4 },
+    backIcon: {
+        position: 'absolute',
+        left: 0,
+        paddingHorizontal: 10,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: PRIMARY,
+    },
+    title: { fontSize: 22, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
+    subtitle: { fontSize: 16, fontWeight: "600", marginBottom: 10, color: PRIMARY },
+    itemRow: {
+        flexDirection: 'row',
+        padding: 12,
+        marginBottom: 12,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#eee',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    image: {
+        width: 90,
+        height: 90,
+        borderRadius: 10,
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        backgroundColor: '#f5f5f5',
+        resizeMode: 'cover',
+    },
+    name: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
+    totalBlock: {
+        marginTop: 20,
+        borderTopWidth: 1,
+        paddingTop: 12,
+        borderColor: "#ddd",
+        backgroundColor: '#fff',
+        padding: 15,
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    total: { fontSize: 16, marginVertical: 4, color: PRIMARY },
     payButton: {
-        backgroundColor: "#1677ff",
-        marginTop: 30,
+        backgroundColor: PRIMARY,
         padding: 14,
-        borderRadius: 8,
-        alignItems: "center",
+        borderRadius: 10,
+        marginTop: 20,
+        alignItems: 'center',
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
     },
     payButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });
