@@ -231,10 +231,9 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
                   >
                     {s.size}
                   </Text>
-
-                  {/* <Text style={{ fontSize: 11, color: isDisabled ? "#9ca3af" : "#6b7280" }}>
+                  <Text style={{ fontSize: 11, color: isDisabled ? "#9ca3af" : "#6b7280" }}>
                     {isDisabled ? "Hết hàng" : `Còn ${s.quantity}`}
-                  </Text> */}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -499,7 +498,6 @@ const styles = StyleSheet.create({
   paddingHorizontal: 20,
   paddingVertical: 14,
 },
-
   totalContainer: {
     flexDirection: "column",
   },
