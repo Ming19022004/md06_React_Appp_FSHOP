@@ -333,7 +333,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="ticket-outline" size={20} color={PRIMARY} />
-                <Text style={styles.sectionTitle}>F-Shop Voucher</Text>
+                <Text style={styles.sectionTitle}>Coolmate Voucher</Text>
               </View>
 
               {appliedVoucher ? (
