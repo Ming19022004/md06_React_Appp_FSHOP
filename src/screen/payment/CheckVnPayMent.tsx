@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -9,17 +10,24 @@ import {
   ScrollView,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import API from "../../api"; // ✅ Import API chuẩn
+import API from "../../api";
+import { BASE_URL } from "../../constants";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ✅ Khai báo global type
+// Theme colors
+const PRIMARY = '#0f766e';
+const ORANGE = '#f97316';
+const RED = '#ef4444';
+const GREEN = '#10b981';
+const AMBER = '#f59e0b';
+
+// Khai báo global type
 declare global {
   var paymentResultParams: any;
 }
 
-// ✅ Cấu hình URL backend - phù hợp với máy ảo Android
-const BACKEND_URL = __DEV__
-    ? "http://10.0.2.2:3002"  // IP cho Android Emulator
-    : "http://192.168.0.103:3002"; // IP thật cho device thật
+const BACKEND_URL = BASE_URL;
 
 interface PaymentResult {
   status: "success" | "error" | "loading";
@@ -30,6 +38,8 @@ interface PaymentResult {
   transactionId?: string;
   bankCode?: string;
   paymentTime?: string;
+  errorCode?: string;
+  errorMessage?: string;
 }
 
 const CheckVnPayMent = () => {
@@ -43,144 +53,117 @@ const CheckVnPayMent = () => {
 
   useEffect(() => {
     checkPaymentResult();
+    
+    // Thêm log để debug deep link
+    console.log(" CheckVnPayMent mounted");
+    console.log("Global payment params:", global.paymentResultParams);
+    console.log(" Route params:", route.params);
+    
+    // Cleanup function to clear params when component unmounts
+    return () => {
+      global.paymentResultParams = null;
+    };
   }, []);
 
   const checkPaymentResult = async () => {
     try {
-      // ✅ Lấy query parameters từ route params (deep link hoặc navigation)
+      // Lấy params từ route (deep link hoặc navigation)
       const params = route.params as any;
-      let searchParams = params?.searchParams || {};
+      let searchParams = params?.searchParams || params || {};
 
-      // ✅ Nếu không có searchParams, thử lấy từ params trực tiếp
-      if (!searchParams || Object.keys(searchParams).length === 0) {
-        searchParams = params || {};
-      }
-
-      // ✅ Kiểm tra global params từ deep link (nếu có)
+      // Kiểm tra global params từ deep link
       if (global.paymentResultParams && Object.keys(global.paymentResultParams).length > 0) {
         searchParams = global.paymentResultParams;
-        // Clear global params sau khi sử dụng
+        console.log(" Sử dụng global params:", searchParams);
+        // Clear params immediately after using them
         global.paymentResultParams = null;
       }
 
-      console.log("🔍 VNPay Search Params:", searchParams);
-      console.log("🌐 Backend URL:", BACKEND_URL);
+      console.log(" Payment Result Params:", searchParams);
+      console.log("Backend URL:", BACKEND_URL);
 
-      // ✅ Kiểm tra có params VNPay không
-      if (!searchParams.vnp_ResponseCode && !searchParams.error) {
-        console.log("⚠️ Không có VNPay params, hiển thị lỗi");
-        setPaymentResult({
-          status: "error",
-          title: "Không có thông tin thanh toán",
-          subtitle: "Vui lòng thử lại hoặc liên hệ hỗ trợ",
-        });
+      // Xử lý deep link params từ BE redirect
+      if (searchParams.status === "success") {
+        // Thanh toán thành công từ deep link - lấy dữ liệu thực tế từ API
+        const orderCode = searchParams.orderId;
+        console.log(" Xử lý success deep link cho order:", orderCode);
+        
+        // Gọi API để lấy thông tin chi tiết đơn hàng
+        await fetchOrderDetails(orderCode);
+        return;
+      } else if (searchParams.status === "failed") {
+        // Thanh toán thất bại từ deep link - lấy dữ liệu thực tế từ API
+        const orderCode = searchParams.orderId;
+        console.log(" Xử lý failed deep link cho order:", orderCode);
+        
+        // Gọi API để lấy thông tin chi tiết đơn hàng
+        await fetchOrderDetails(orderCode);
         return;
       }
 
-      // ✅ Xử lý VNPay trực tiếp từ params
-      console.log("📦 VNPay Response Code:", searchParams.vnp_ResponseCode);
-
-      if (searchParams.vnp_ResponseCode === "00") {
-        // ✅ Thanh toán thành công
-        const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
-        const amount = searchParams.vnp_Amount ? Number(searchParams.vnp_Amount) / 100 : undefined;
-
-        setPaymentResult({
-          status: "success",
-          title: "Thanh toán thành công",
-          subtitle: "Đơn hàng của bạn đã được xử lý thành công",
-          orderCode: orderCode,
-          amount: amount,
-          transactionId: searchParams.vnp_TransactionNo,
-          bankCode: searchParams.vnp_BankCode,
-          paymentTime: searchParams.vnp_PayDate,
-        });
-
-        // ✅ Gọi API để cập nhật trạng thái đơn hàng (nếu chưa được cập nhật)
-        try {
-          if (orderCode) {
-            console.log("🔄 Cập nhật trạng thái đơn hàng:", orderCode);
-            // Gọi API cập nhật trạng thái đơn hàng
-            await API.put(`/orders/${orderCode}/status`, {
-              status: 'paid',
-              paymentStatus: 'completed',
-              paymentMethod: 'vnpay',
-              paymentDetails: {
-                transactionId: searchParams.vnp_TransactionNo,
-                bankCode: searchParams.vnp_BankCode,
-                paymentTime: searchParams.vnp_PayDate,
-                amount: amount
-              }
-            });
-            console.log("✅ Cập nhật trạng thái đơn hàng thành công");
-          }
-        } catch (updateError) {
-          console.log("⚠️ Không thể cập nhật trạng thái đơn hàng:", updateError);
-          // Không hiển thị lỗi cho user vì thanh toán đã thành công
+      // Xử lý VNPay params trực tiếp
+      if (searchParams.vnp_ResponseCode) {
+        console.log("VNPay Response Code:", searchParams.vnp_ResponseCode);
+        
+        if (searchParams.vnp_ResponseCode === "00") {
+          // Thanh toán thành công - lấy dữ liệu thực tế từ API
+          const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
+          console.log("VNPay success, lấy thông tin order:", orderCode);
+          
+          // Gọi API để lấy thông tin chi tiết đơn hàng
+          await fetchOrderDetails(orderCode);
+          return;
+          
+        } else if (searchParams.vnp_ResponseCode === "24") {
+          // Khách hàng hủy thanh toán - lấy dữ liệu thực tế từ API
+          const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
+          console.log(" VNPay cancelled, lấy thông tin order:", orderCode);
+          
+          // Gọi API để lấy thông tin chi tiết đơn hàng
+          await fetchOrderDetails(orderCode);
+          return;
+        } else {
+          // Lỗi khác từ VNPay - lấy dữ liệu thực tế từ API
+          const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
+          console.log(" VNPay error, lấy thông tin order:", orderCode);
+          
+          // Gọi API để lấy thông tin chi tiết đơn hàng
+          await fetchOrderDetails(orderCode);
+          return;
         }
-
-      } else if (searchParams.vnp_ResponseCode === "24") {
-        // ✅ Khách hàng hủy thanh toán
-        setPaymentResult({
-          status: "error",
-          title: "Khách hàng hủy thanh toán",
-          subtitle: "Thanh toán đã bị hủy",
-          orderCode: searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", ""),
-        });
-      } else if (searchParams.error) {
-        // ✅ Xử lý lỗi từ backend
-        let errorTitle = "Thanh toán thất bại";
-        let errorSubtitle = "Đã xảy ra lỗi trong quá trình thanh toán";
-
-        switch (searchParams.error) {
-          case 'order_not_found':
-            errorTitle = "Không tìm thấy đơn hàng";
-            errorSubtitle = "Đơn hàng có thể chưa được tạo hoặc đã bị xóa";
-            break;
-          case 'update_failed':
-            errorTitle = "Lỗi cập nhật đơn hàng";
-            errorSubtitle = "Thanh toán thành công nhưng không thể cập nhật trạng thái";
-            break;
-          case 'invalid_signature':
-            errorTitle = "Dữ liệu không hợp lệ";
-            errorSubtitle = "Chữ ký thanh toán không đúng";
-            break;
-          default:
-            errorSubtitle = `Mã lỗi: ${searchParams.error}`;
-        }
-
-        setPaymentResult({
-          status: "error",
-          title: errorTitle,
-          subtitle: errorSubtitle,
-          orderCode: searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", ""),
-        });
-      } else {
-        // ✅ Lỗi khác từ VNPay
-        setPaymentResult({
-          status: "error",
-          title: "Thanh toán thất bại",
-          subtitle: `Mã lỗi: ${searchParams.vnp_ResponseCode || "Unknown"}`,
-          orderCode: searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", ""),
-        });
       }
 
+      // Nếu không có params, thử lấy từ cache hoặc API
+      console.log("Không có params, thử lấy từ cache/API");
+      
+      // Thử lấy từ cache trước - sử dụng orderId từ URL hoặc fallback
+      const orderCode = searchParams.orderId || searchParams.order_code;
+      if (orderCode) {
+        await fetchOrderDetails(orderCode);
+        return;
+      }
+
+      // Nếu không có dữ liệu, hiển thị lỗi
+      setPaymentResult({
+        status: "error",
+        title: "Không có thông tin thanh toán",
+        subtitle: "Vui lòng thử lại hoặc liên hệ hỗ trợ",
+      });
+      
     } catch (error: any) {
-      console.error("❌ Lỗi chi tiết:", {
+      console.error(" Lỗi chi tiết:", {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
-        config: error.config
       });
-
-      // ✅ Hiển thị lỗi chi tiết hơn
+      
       let errorMessage = "Không thể kiểm tra trạng thái thanh toán.";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message === "Network Error") {
-        errorMessage = `Không thể kết nối đến server (${BACKEND_URL}). Vui lòng kiểm tra:\n\n1. Backend server đã chạy chưa?\n2. IP address có đúng không?\n3. Firewall có chặn không?`;
+        errorMessage = `Không thể kết nối đến server (${BACKEND_URL}). Vui lòng kiểm tra kết nối mạng.`;
       }
-
+      
       setPaymentResult({
         status: "error",
         title: "Lỗi kết nối",
@@ -189,7 +172,141 @@ const CheckVnPayMent = () => {
     }
   };
 
+
+
+  // Function để xóa toàn bộ giỏ hàng khi thanh toán thành công
+  const clearEntireCart = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        console.log("Không có userId để xóa giỏ hàng");
+        return;
+      }
+
+      console.log("🛒 Xóa toàn bộ giỏ hàng cho user:", userId);
+      
+      // Sử dụng API xóa toàn bộ giỏ hàng
+      await API.delete(`/carts/${userId}`);
+      
+      console.log("✅ Đã xóa toàn bộ giỏ hàng thành công");
+    } catch (error: any) {
+      console.error("❌ Lỗi khi xóa giỏ hàng:", {
+        message: error.message,
+        response: error.response?.data
+      });
+    }
+  };
+
+  // Function để lấy thông tin chi tiết đơn hàng từ API
+  const fetchOrderDetails = async (orderCode: string) => {
+    try {
+      console.log(" Lấy thông tin chi tiết đơn hàng:", orderCode);
+      
+      // Thử lấy từ cache trước
+      try {
+        const cacheResponse = await axios.get(`${BACKEND_URL}/vnpay/get_payment_result`, {
+          params: { order_code: orderCode }
+        });
+        
+        console.log(" Cache response:", cacheResponse.data);
+        
+        if (cacheResponse.data?.success) {
+          const result = cacheResponse.data.data;
+          setPaymentResult({
+            status: result.status === 'success' ? 'success' : 'error',
+            title: result.status === 'success' ? 'Thanh toán thành công' : 'Thanh toán thất bại',
+            subtitle: result.status === 'success' 
+              ? 'Đơn hàng của bạn đã được xử lý thành công'
+              : (result.errorMessage || 'Đã xảy ra lỗi trong quá trình thanh toán'),
+            orderCode: result.orderId,
+            amount: result.amount,
+            transactionId: result.transactionId,
+            errorCode: result.errorCode,
+            errorMessage: result.errorMessage,
+          });
+          
+                     // Nếu thanh toán thành công, xóa toàn bộ giỏ hàng
+           if (result.status === 'success') {
+             await clearEntireCart();
+           }
+          return;
+        }
+      } catch (cacheError: any) {
+        console.log("Không thể lấy từ cache:", cacheError.message);
+      }
+
+      // Nếu không có trong cache, lấy từ database
+      try {
+        const orderResponse = await axios.get(`${BACKEND_URL}/vnpay/check_order_status`, {
+          params: { order_code: orderCode }
+        });
+        
+        console.log(" Order response:", orderResponse.data);
+        
+        if (orderResponse.data?.success) {
+          const order = orderResponse.data.data;
+          
+          if (order.status === 'paid' && order.paymentStatus === 'completed') {
+            setPaymentResult({
+              status: 'success',
+              title: 'Thanh toán thành công',
+              subtitle: 'Đơn hàng của bạn đã được xử lý thành công',
+              orderCode: order.order_code,
+              amount: order.total_amount,
+              transactionId: order.paymentDetails?.transactionId,
+              bankCode: order.paymentDetails?.bankCode,
+              paymentTime: order.paymentDetails?.paymentTime,
+            });
+            
+                         // Xóa toàn bộ giỏ hàng khi thanh toán thành công
+             await clearEntireCart();
+          } else if (order.status === 'payment_failed' || order.paymentStatus === 'failed') {
+            setPaymentResult({
+              status: 'error',
+              title: 'Thanh toán thất bại',
+              subtitle: order.paymentDetails?.errorMessage || 'Đã xảy ra lỗi trong quá trình thanh toán',
+              orderCode: order.order_code,
+              errorCode: order.paymentDetails?.errorCode,
+              errorMessage: order.paymentDetails?.errorMessage,
+            });
+          } else {
+            setPaymentResult({
+              status: 'error',
+              title: 'Trạng thái không xác định',
+              subtitle: 'Không thể xác định trạng thái thanh toán',
+              orderCode: order.order_code,
+            });
+          }
+          return;
+        }
+      } catch (orderError: any) {
+        console.log("Không thể lấy thông tin đơn hàng:", orderError.message);
+      }
+
+      // Nếu không lấy được dữ liệu, hiển thị lỗi
+      setPaymentResult({
+        status: "error",
+        title: "Không tìm thấy thông tin đơn hàng",
+        subtitle: `Không thể tìm thấy đơn hàng với mã: ${orderCode}`,
+        orderCode: orderCode,
+      });
+      
+    } catch (error: any) {
+      console.error(" Lỗi khi lấy thông tin đơn hàng:", error);
+      setPaymentResult({
+        status: "error",
+        title: "Lỗi khi lấy thông tin",
+        subtitle: "Không thể lấy thông tin đơn hàng từ server",
+        orderCode: orderCode,
+      });
+    }
+  };
+
   const handleGoHome = () => {
+    // Clear any remaining payment params
+    global.paymentResultParams = null;
+    
+    // Reset navigation stack to Home
     navigation.reset({
       index: 0,
       routes: [{ name: "Home" as never }],
@@ -197,10 +314,18 @@ const CheckVnPayMent = () => {
   };
 
   const handleBuyAgain = () => {
+    // Clear any remaining payment params
+    global.paymentResultParams = null;
+    
+    // Navigate to Home
     navigation.navigate("Home" as never);
   };
 
   const handleCheckOrder = () => {
+    // Clear any remaining payment params
+    global.paymentResultParams = null;
+    
+    // Navigate to OrderTracking
     navigation.navigate("OrderTracking" as never);
   };
 
@@ -213,12 +338,19 @@ const CheckVnPayMent = () => {
     checkPaymentResult();
   };
 
+
+
   if (paymentResult.status === "loading") {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1677ff" />
+        <ActivityIndicator size="large" color={PRIMARY} />
         <Text style={styles.loadingText}>{paymentResult.title}</Text>
         <Text style={styles.loadingSubtext}>{paymentResult.subtitle}</Text>
+        <View style={styles.loadingDots}>
+          <Text style={styles.dot}>•</Text>
+          <Text style={styles.dot}>•</Text>
+          <Text style={styles.dot}>•</Text>
+        </View>
       </View>
     );
   }
@@ -226,7 +358,7 @@ const CheckVnPayMent = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        {/* ✅ Icon Status */}
+        {/* Icon Status */}
         <View style={[
           styles.iconContainer,
           paymentResult.status === "success" ? styles.successIcon : styles.errorIcon
@@ -236,7 +368,7 @@ const CheckVnPayMent = () => {
           </Text>
         </View>
 
-        {/* ✅ Title */}
+        {/* Title */}
         <Text style={[
           styles.title,
           paymentResult.status === "success" ? styles.successTitle : styles.errorTitle
@@ -244,10 +376,10 @@ const CheckVnPayMent = () => {
           {paymentResult.title}
         </Text>
 
-        {/* ✅ Subtitle */}
+        {/* Subtitle */}
         <Text style={styles.subtitle}>{paymentResult.subtitle}</Text>
 
-        {/* ✅ Order Details */}
+        {/* Order Details */}
         {paymentResult.orderCode && (
           <View style={styles.orderDetails}>
             <Text style={styles.orderLabel}>Mã đơn hàng:</Text>
@@ -264,21 +396,23 @@ const CheckVnPayMent = () => {
           </View>
         )}
 
-        {/* ✅ Payment Details (chỉ hiển thị khi thành công) */}
-        {paymentResult.status === "success" && paymentResult.transactionId && (
+        {/* Payment Details (chỉ hiển thị khi thành công) */}
+        {paymentResult.status === "success" && (
           <>
-            <View style={styles.orderDetails}>
-              <Text style={styles.orderLabel}>Mã giao dịch:</Text>
-              <Text style={styles.orderCode}>{paymentResult.transactionId}</Text>
-            </View>
-
+            {paymentResult.transactionId && (
+              <View style={styles.orderDetails}>
+                <Text style={styles.orderLabel}>Mã giao dịch:</Text>
+                <Text style={styles.orderCode}>{paymentResult.transactionId}</Text>
+              </View>
+            )}
+            
             {paymentResult.bankCode && (
               <View style={styles.orderDetails}>
                 <Text style={styles.orderLabel}>Ngân hàng:</Text>
                 <Text style={styles.orderCode}>{paymentResult.bankCode}</Text>
               </View>
             )}
-
+            
             {paymentResult.paymentTime && (
               <View style={styles.orderDetails}>
                 <Text style={styles.orderLabel}>Thời gian:</Text>
@@ -290,7 +424,26 @@ const CheckVnPayMent = () => {
           </>
         )}
 
-        {/* ✅ Action Buttons */}
+        {/* Error Details (chỉ hiển thị khi có lỗi) */}
+        {paymentResult.status === "error" && (
+          <>
+            {paymentResult.errorCode && (
+              <View style={styles.orderDetails}>
+                <Text style={styles.orderLabel}>Mã lỗi:</Text>
+                <Text style={styles.orderCode}>{paymentResult.errorCode}</Text>
+              </View>
+            )}
+            
+            {paymentResult.errorMessage && (
+              <View style={styles.orderDetails}>
+                <Text style={styles.orderLabel}>Chi tiết lỗi:</Text>
+                <Text style={styles.orderCode}>{paymentResult.errorMessage}</Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* Action Buttons */}
         <View style={styles.buttonContainer}>
           {paymentResult.status === "success" ? (
             <>
@@ -314,6 +467,8 @@ const CheckVnPayMent = () => {
               </TouchableOpacity>
             </>
           )}
+
+
         </View>
       </View>
     </ScrollView>
@@ -337,13 +492,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 20,
     textAlign: "center",
-    color: "#333",
+    color: PRIMARY,
   },
   loadingSubtext: {
     fontSize: 14,
     marginTop: 10,
     textAlign: "center",
     color: "#666",
+  },
+  loadingDots: {
+    flexDirection: "row",
+    marginTop: 20,
+  },
+  dot: {
+    fontSize: 20,
+    color: "#1677ff",
+    marginHorizontal: 5,
   },
   content: {
     flex: 1,
@@ -361,10 +525,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   successIcon: {
-    backgroundColor: "#52c41a",
+    backgroundColor: GREEN,
   },
   errorIcon: {
-    backgroundColor: "#ff4d4f",
+    backgroundColor: RED,
   },
   iconText: {
     fontSize: 40,
@@ -378,10 +542,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   successTitle: {
-    color: "#52c41a",
+    color: GREEN,
   },
   errorTitle: {
-    color: "#ff4d4f",
+    color: RED,
   },
   subtitle: {
     fontSize: 16,
@@ -406,7 +570,7 @@ const styles = StyleSheet.create({
   },
   orderLabel: {
     fontSize: 14,
-    color: "#666",
+    color: PRIMARY,
     marginRight: 10,
   },
   orderCode: {
@@ -419,13 +583,13 @@ const styles = StyleSheet.create({
     marginTop: 30,
   },
   primaryButton: {
-    backgroundColor: "#1677ff",
+    backgroundColor: PRIMARY,
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 15,
-    shadowColor: "#1677ff",
+    shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -443,13 +607,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#d9d9d9",
+    borderColor: PRIMARY,
   },
   secondaryButtonText: {
-    color: "#666",
+    color: PRIMARY,
     fontSize: 16,
     fontWeight: "500",
   },
+
 });
 
 export default CheckVnPayMent;
