@@ -55,6 +55,7 @@ interface OrderItem {
     name: string;
     purchaseQuantity: number;
     price: number;
+    isReviewed?: boolean;
     productDetails?: {
       images?: string[];
     };
@@ -208,6 +209,8 @@ const OrderTrackingScreen = () => {
   const renderItem = ({ item }: { item: OrderItem }) => {
     //     // Sử dụng hàm tính toán để lấy số liệu chính xác
     const { finalTotal, discount } = calculateDisplayPrice(item);
+    //check tất cả sản phẩm đã đánh giá chưa
+    const allReviewed = item.items.every(i => i.isReviewed === true);
     const isCancellable = ['waiting', 'pending'].includes(
       (item.status || '').toLowerCase(),
     );
@@ -324,6 +327,7 @@ const OrderTrackingScreen = () => {
                     return {
                       productId,
                       productName: p.name,
+                      isReviewed: p.isReviewed || false,// thêm trạng thái đã đánh giá
                       productImage,
                     };
                   }),
