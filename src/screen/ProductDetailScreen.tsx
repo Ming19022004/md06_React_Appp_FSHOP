@@ -129,7 +129,20 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         color: "Default"
       });
 
-      Alert.alert("Thành công", "Đã thêm vào giỏ hàng!");
+      Alert.alert(
+  "Thành công",
+  "Sản phẩm đã được thêm vào giỏ hàng!",
+  [
+    {
+      text: "Tiếp tục mua sắm",
+      style: "cancel"
+    },
+    {
+      text: "Xem giỏ hàng",
+      onPress: () => navigation.navigate("Cart")
+    }
+  ]
+);
     } catch (error) {
       console.error("Add to cart error:", error);
     }
