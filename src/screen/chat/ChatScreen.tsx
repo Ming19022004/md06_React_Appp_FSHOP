@@ -236,88 +236,164 @@ export default ChatScreen;
 
 // === STYLES ===
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  header: {
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-    height: (Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0) + 56,
-    backgroundColor: COLORS.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    elevation: 4
-  },
-  headerBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  headerInfo: { flex: 1, paddingLeft: 8 },
-  headerTitle: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-
-  statusIndicator: { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#4ade80", marginRight: 6 },
-  statusText: { color: "#e5e7eb", fontSize: 12 },
-
-  listContent: { padding: 16, paddingBottom: 10 },
-
-  messageContainer: { flexDirection: "row", marginBottom: 16 },
-  userContainer: { justifyContent: "flex-end" },
-  adminContainer: { justifyContent: "flex-start" },
-
-  avatarContainer: { marginRight: 8 },
-
-  bubble: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    maxWidth: "75%",
-    borderRadius: 20,
-    position: "relative",
-    elevation: 1
-  },
-
-  userBubble: { backgroundColor: COLORS.myBubble, borderBottomRightRadius: 4 },
-  adminBubble: { backgroundColor: COLORS.theirBubble, borderBottomLeftRadius: 4 },
-
-  messageText: { fontSize: 15 },
-  userText: { color: COLORS.textWhite },
-  adminText: { color: COLORS.textBlack },
-
-  timeText: { fontSize: 10, marginTop: 4, alignSelf: "flex-end" },
-  userTime: { color: "rgba(255,255,255,0.7)" },
-  adminTime: { color: COLORS.timeText },
-
-  inputWrapper: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#eee"
-  },
-
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    backgroundColor: "#f3f4f6",
-    borderRadius: 24,
-    paddingHorizontal: 6,
-    paddingVertical: 6
-  },
-
-  input: {
+  safeArea: {
     flex: 1,
-    maxHeight: 100,
-    minHeight: 40,
+    backgroundColor: '#0f766e',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  /* HEADER */
+  header: {
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    backgroundColor: '#0f766e',
+  },
+  headerBtn: {
+    padding: 4,
+  },
+  headerInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#22c55e',
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#d1fae5',
+  },
+
+  /* LIST */
+  listContent: {
+    padding: 12,
+    paddingBottom: 80,
+    backgroundColor: '#f9fafb',
+    flexGrow: 1,
+  },
+
+  /* MESSAGE ROW */
+  messageContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    alignItems: 'flex-end',
+  },
+  userContainer: {
+    justifyContent: 'flex-end',
+  },
+  adminContainer: {
+    justifyContent: 'flex-start',
+  },
+
+  /* AVATAR */
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+
+  /* BUBBLE */
+  bubble: {
+    maxWidth: '78%',
+    borderRadius: 16,
+    padding: 10,
+    paddingBottom: 16,
+    position: 'relative',
+  },
+  userBubble: {
+    backgroundColor: '#0f766e',
+    marginLeft: 'auto',
+  },
+  adminBubble: {
+    backgroundColor: '#e5e7eb',
+  },
+
+  /* TEXT */
+  messageText: {
+    fontSize: 14,
+  },
+  userText: {
+    color: '#fff',
+  },
+  adminText: {
+    color: '#111827',
+  },
+
+  /* TIME */
+  timeText: {
+    fontSize: 10,
+    marginTop: 4,
+  },
+  userTime: {
+    color: '#d1fae5',
+    alignSelf: 'flex-end',
+  },
+  adminTime: {
+    color: '#6b7280',
+    alignSelf: 'flex-end',
+  },
+
+  /* REACTION BADGE */
+  reactionBadge: {
+    position: 'absolute',
+    bottom: -7,
+    backgroundColor: '#fff',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+
+  /* INPUT ZONE */
+  inputWrapper: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: "#333",
-    fontSize: 15
   },
-
+  input: {
+    flex: 1,
+    fontSize: 14,
+    maxHeight: 120,
+  },
   sendBtn: {
-    width: 40,
-    height: 40,
+    marginLeft: 10,
+    backgroundColor: '#0f766e',
+    padding: 10,
     borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  sendBtnDisabled: { backgroundColor: "#ccc" },
+  sendBtnDisabled: {
+    backgroundColor: '#9ca3af',
+  },
 });
