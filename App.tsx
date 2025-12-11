@@ -20,6 +20,8 @@ import CheckVnPayMent from './src/screen/payment/CheckVnPayMent';
 import NotificationScreen from "./src/screen/NotificationScreen";
 import SaleProductDetail from './src/screen/SaleProductDetail';
 import ReviewScreen from './src/screen/ReviewScreen';
+import ChatScreen from './src/screen/chat/ChatScreen';
+
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -107,6 +109,7 @@ export default function App() {
         <Stack.Screen name="ForgotP" component={ForgotPassword} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="MainTab" component={TabNavigator} />
         <Stack.Screen name="BannerDT" component={BannerDetail} />
         <Stack.Screen name="ProductDT" component={ProductDetailScreen} />
