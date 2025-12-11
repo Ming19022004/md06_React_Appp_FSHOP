@@ -42,7 +42,12 @@ const LogoMoreScreen = ({ navigation, route }: any) => {
           ...p,
           images: p.images || (p.image ? [p.image] : []),
         }));
-        const filtered = all.filter((p: any) => p.categoryCode === code);
+        const filtered = all.filter(
+          (p: any) => 
+            p.categoryCode === code &&
+            p.isActive === true &&
+            (p.categoryIsActive !== false)
+        );
         if (isMounted) setProducts(filtered);
       } catch (error) {
         console.error('Lỗi lấy sản phẩm theo danh mục:', error);

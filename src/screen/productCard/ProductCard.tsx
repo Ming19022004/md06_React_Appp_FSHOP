@@ -69,10 +69,36 @@ const ProductCard = ({ item, navigation }: any) => {
         <Text style={styles.name} numberOfLines={2}>
           {item.name}
         </Text>
+        {/* 🔥 Nếu sản phẩm bị ẩn */}
+          {item.isActive === false && (
+            <Text style={{ color: "red", fontSize: 12, marginLeft: 6 }}>
+              Sản phẩm ngừng kinh doanh
+            </Text>
+          )}
+
+          {/* 🔥 Nếu hết hàng
+          {item.stock === 0 && (
+            <Text style={{ color: "orange", fontSize: 12, marginLeft: 6 }}>
+              Tạm hết hàng
+            </Text>
+          )} */}
 
         <View style={styles.priceContainer}>
           <Text style={styles.price}>{item.price?.toLocaleString() || 0} đ</Text>
           <Text style={styles.sold}>Đã bán {item.sold || 0}</Text>
+          {/* 🔥 Nếu sản phẩm bị ẩn */}
+          {item.isActive === false && (
+            <Text style={{ color: "red", fontSize: 12, marginLeft: 6 }}>
+              Sản phẩm ngừng kinh doanh
+            </Text>
+          )}
+
+          {/* 🔥 Nếu hết hàng
+          {item.stock === 0 && (
+            <Text style={{ color: "orange", fontSize: 12, marginLeft: 6 }}>
+              Tạm hết hàng
+            </Text>
+          )} */}
         </View>
       </Animated.View>
     </Pressable>
