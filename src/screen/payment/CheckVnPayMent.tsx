@@ -9,7 +9,7 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation, CommonActions } from "@react-navigation/native";
 import API from "../../api";
 import { BASE_URL } from "../../constants";
 import axios from "axios";
@@ -42,28 +42,80 @@ interface PaymentResult {
   errorMessage?: string;
 }
 
+interface OrderDetails {
+  order_code?: string;
+  items?: Array<{
+    name: string;
+    purchaseQuantity: number;
+    price: number;
+    size?: string;
+  }>;
+  totalPrice?: number;
+  shippingFee?: number;
+  voucher?: {
+    code?: string;
+    discount?: number;
+  };
+  finalTotal?: number;
+  shippingAddress?: string;
+}
+
 const CheckVnPayMent = () => {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [paymentResult, setPaymentResult] = useState<PaymentResult>({
     status: "loading",
     title: "Đang kiểm tra thanh toán...",
     subtitle: "Vui lòng chờ trong giây lát",
   });
+  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
 
   useEffect(() => {
     checkPaymentResult();
-    
+
     // Thêm log để debug deep link
     console.log(" CheckVnPayMent mounted");
-    console.log("Global payment params:", global.paymentResultParams);
+    console.log("Global payment params:", (globalThis as any).paymentResultParams);
     console.log(" Route params:", route.params);
-    
+
     // Cleanup function to clear params when component unmounts
     return () => {
-      global.paymentResultParams = null;
+      (globalThis as any).paymentResultParams = null;
     };
   }, []);
+
+  // Reset navigation về tab Home
+  const resetToHomeTab = () => {
+    console.log("🧭 resetToHomeTab() được gọi - về MainTab/HomeTab");
+    try {
+      const stateBefore = navigation.getState?.();
+      console.log("🧭 Nav state BEFORE reset:", JSON.stringify(stateBefore, null, 2));
+    } catch (e: any) {
+      console.log("🧭 Nav state BEFORE reset: error", e?.message || e);
+    }
+
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: "MainTab",
+            state: {
+              index: 0,
+              routes: [{ name: "HomeTab" }],
+            },
+          },
+        ],
+      })
+    );
+
+    try {
+      const stateAfter = navigation.getState?.();
+      console.log("🧭 Nav state AFTER reset:", JSON.stringify(stateAfter, null, 2));
+    } catch (e: any) {
+      console.log("🧭 Nav state AFTER reset: error", e?.message || e);
+    }
+  };
 
   const checkPaymentResult = async () => {
     try {
@@ -72,11 +124,11 @@ const CheckVnPayMent = () => {
       let searchParams = params?.searchParams || params || {};
 
       // Kiểm tra global params từ deep link
-      if (global.paymentResultParams && Object.keys(global.paymentResultParams).length > 0) {
-        searchParams = global.paymentResultParams;
+      if ((globalThis as any).paymentResultParams && Object.keys((globalThis as any).paymentResultParams).length > 0) {
+        searchParams = (globalThis as any).paymentResultParams;
         console.log(" Sử dụng global params:", searchParams);
         // Clear params immediately after using them
-        global.paymentResultParams = null;
+        (globalThis as any).paymentResultParams = null;
       }
 
       console.log(" Payment Result Params:", searchParams);
@@ -87,7 +139,7 @@ const CheckVnPayMent = () => {
         // Thanh toán thành công từ deep link - lấy dữ liệu thực tế từ API
         const orderCode = searchParams.orderId;
         console.log(" Xử lý success deep link cho order:", orderCode);
-        
+
         // Gọi API để lấy thông tin chi tiết đơn hàng
         await fetchOrderDetails(orderCode);
         return;
@@ -95,7 +147,7 @@ const CheckVnPayMent = () => {
         // Thanh toán thất bại từ deep link - lấy dữ liệu thực tế từ API
         const orderCode = searchParams.orderId;
         console.log(" Xử lý failed deep link cho order:", orderCode);
-        
+
         // Gọi API để lấy thông tin chi tiết đơn hàng
         await fetchOrderDetails(orderCode);
         return;
@@ -104,21 +156,21 @@ const CheckVnPayMent = () => {
       // Xử lý VNPay params trực tiếp
       if (searchParams.vnp_ResponseCode) {
         console.log("VNPay Response Code:", searchParams.vnp_ResponseCode);
-        
+
         if (searchParams.vnp_ResponseCode === "00") {
           // Thanh toán thành công - lấy dữ liệu thực tế từ API
           const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
           console.log("VNPay success, lấy thông tin order:", orderCode);
-          
+
           // Gọi API để lấy thông tin chi tiết đơn hàng
           await fetchOrderDetails(orderCode);
           return;
-          
+
         } else if (searchParams.vnp_ResponseCode === "24") {
           // Khách hàng hủy thanh toán - lấy dữ liệu thực tế từ API
           const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
           console.log(" VNPay cancelled, lấy thông tin order:", orderCode);
-          
+
           // Gọi API để lấy thông tin chi tiết đơn hàng
           await fetchOrderDetails(orderCode);
           return;
@@ -126,7 +178,7 @@ const CheckVnPayMent = () => {
           // Lỗi khác từ VNPay - lấy dữ liệu thực tế từ API
           const orderCode = searchParams.vnp_OrderInfo?.replace("Thanh_toan_don_hang_", "");
           console.log(" VNPay error, lấy thông tin order:", orderCode);
-          
+
           // Gọi API để lấy thông tin chi tiết đơn hàng
           await fetchOrderDetails(orderCode);
           return;
@@ -135,7 +187,7 @@ const CheckVnPayMent = () => {
 
       // Nếu không có params, thử lấy từ cache hoặc API
       console.log("Không có params, thử lấy từ cache/API");
-      
+
       // Thử lấy từ cache trước - sử dụng orderId từ URL hoặc fallback
       const orderCode = searchParams.orderId || searchParams.order_code;
       if (orderCode) {
@@ -149,21 +201,21 @@ const CheckVnPayMent = () => {
         title: "Không có thông tin thanh toán",
         subtitle: "Vui lòng thử lại hoặc liên hệ hỗ trợ",
       });
-      
+
     } catch (error: any) {
       console.error(" Lỗi chi tiết:", {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
       });
-      
+
       let errorMessage = "Không thể kiểm tra trạng thái thanh toán.";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message === "Network Error") {
         errorMessage = `Không thể kết nối đến server (${BACKEND_URL}). Vui lòng kiểm tra kết nối mạng.`;
       }
-      
+
       setPaymentResult({
         status: "error",
         title: "Lỗi kết nối",
@@ -184,10 +236,10 @@ const CheckVnPayMent = () => {
       }
 
       console.log("🛒 Xóa toàn bộ giỏ hàng cho user:", userId);
-      
+
       // Sử dụng API xóa toàn bộ giỏ hàng
       await API.delete(`/carts/${userId}`);
-      
+
       console.log("✅ Đã xóa toàn bộ giỏ hàng thành công");
     } catch (error: any) {
       console.error("❌ Lỗi khi xóa giỏ hàng:", {
@@ -201,21 +253,21 @@ const CheckVnPayMent = () => {
   const fetchOrderDetails = async (orderCode: string) => {
     try {
       console.log(" Lấy thông tin chi tiết đơn hàng:", orderCode);
-      
+
       // Thử lấy từ cache trước
       try {
         const cacheResponse = await axios.get(`${BACKEND_URL}/vnpay/get_payment_result`, {
           params: { order_code: orderCode }
         });
-        
+
         console.log(" Cache response:", cacheResponse.data);
-        
+
         if (cacheResponse.data?.success) {
           const result = cacheResponse.data.data;
           setPaymentResult({
             status: result.status === 'success' ? 'success' : 'error',
             title: result.status === 'success' ? 'Thanh toán thành công' : 'Thanh toán thất bại',
-            subtitle: result.status === 'success' 
+            subtitle: result.status === 'success'
               ? 'Đơn hàng của bạn đã được xử lý thành công'
               : (result.errorMessage || 'Đã xảy ra lỗi trong quá trình thanh toán'),
             orderCode: result.orderId,
@@ -224,7 +276,7 @@ const CheckVnPayMent = () => {
             errorCode: result.errorCode,
             errorMessage: result.errorMessage,
           });
-          
+
                      // Nếu thanh toán thành công, xóa toàn bộ giỏ hàng
            if (result.status === 'success') {
              await clearEntireCart();
@@ -237,30 +289,52 @@ const CheckVnPayMent = () => {
 
       // Nếu không có trong cache, lấy từ database
       try {
+        console.log("📞 Gọi API check_order_status với order_code:", orderCode);
         const orderResponse = await axios.get(`${BACKEND_URL}/vnpay/check_order_status`, {
           params: { order_code: orderCode }
         });
-        
-        console.log(" Order response:", orderResponse.data);
-        
-        if (orderResponse.data?.success) {
-          const order = orderResponse.data.data;
-          
-          if (order.status === 'paid' && order.paymentStatus === 'completed') {
+
+        console.log("✅ Order response:", JSON.stringify(orderResponse.data, null, 2));
+
+        if (orderResponse.data?.success && orderResponse.data?.order) {
+          const order = orderResponse.data.order;
+
+          console.log("📦 Order data:", {
+            order_code: order.order_code,
+            status: order.status,
+            paymentStatus: order.paymentStatus,
+            finalTotal: order.finalTotal,
+            paymentDetails: order.paymentDetails
+          });
+
+          // Check status: backend set 'confirmed' và 'completed' khi thanh toán thành công
+          if (order.status === 'confirmed' && order.paymentStatus === 'completed') {
+            // Lưu thông tin đơn hàng đầy đủ
+            setOrderDetails({
+              order_code: order.order_code,
+              items: order.items || [],
+              totalPrice: order.totalPrice,
+              shippingFee: order.shippingFee,
+              voucher: order.voucher,
+              finalTotal: order.finalTotal,
+              shippingAddress: order.shippingAddress,
+            });
+
             setPaymentResult({
               status: 'success',
               title: 'Thanh toán thành công',
               subtitle: 'Đơn hàng của bạn đã được xử lý thành công',
               orderCode: order.order_code,
-              amount: order.total_amount,
+              amount: order.finalTotal || order.paymentDetails?.amount,
               transactionId: order.paymentDetails?.transactionId,
               bankCode: order.paymentDetails?.bankCode,
               paymentTime: order.paymentDetails?.paymentTime,
             });
-            
-                         // Xóa toàn bộ giỏ hàng khi thanh toán thành công
-             await clearEntireCart();
-          } else if (order.status === 'payment_failed' || order.paymentStatus === 'failed') {
+
+            // Xóa toàn bộ giỏ hàng khi thanh toán thành công
+            await clearEntireCart();
+            return;
+          } else if (order.status === 'Thanh toán thất bại' || order.paymentStatus === 'failed') {
             setPaymentResult({
               status: 'error',
               title: 'Thanh toán thất bại',
@@ -269,18 +343,28 @@ const CheckVnPayMent = () => {
               errorCode: order.paymentDetails?.errorCode,
               errorMessage: order.paymentDetails?.errorMessage,
             });
+            return;
           } else {
+            // Trạng thái khác (pending, processing, etc.)
+            console.log("⚠️ Order có trạng thái:", order.status, order.paymentStatus);
             setPaymentResult({
               status: 'error',
-              title: 'Trạng thái không xác định',
-              subtitle: 'Không thể xác định trạng thái thanh toán',
+              title: 'Trạng thái đơn hàng',
+              subtitle: `Đơn hàng đang ở trạng thái: ${order.status || 'chưa xác định'}`,
               orderCode: order.order_code,
             });
+            return;
           }
-          return;
+        } else {
+          console.log("❌ Response không hợp lệ:", orderResponse.data);
         }
       } catch (orderError: any) {
-        console.log("Không thể lấy thông tin đơn hàng:", orderError.message);
+        console.error("❌ Lỗi khi gọi API check_order_status:", {
+          message: orderError.message,
+          response: orderError.response?.data,
+          status: orderError.response?.status,
+          url: `${BACKEND_URL}/vnpay/check_order_status?order_code=${orderCode}`
+        });
       }
 
       // Nếu không lấy được dữ liệu, hiển thị lỗi
@@ -290,7 +374,7 @@ const CheckVnPayMent = () => {
         subtitle: `Không thể tìm thấy đơn hàng với mã: ${orderCode}`,
         orderCode: orderCode,
       });
-      
+
     } catch (error: any) {
       console.error(" Lỗi khi lấy thông tin đơn hàng:", error);
       setPaymentResult({
@@ -304,27 +388,26 @@ const CheckVnPayMent = () => {
 
   const handleGoHome = () => {
     // Clear any remaining payment params
-    global.paymentResultParams = null;
-    
-    // Reset navigation stack to Home
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Home" as never }],
-    });
+    (globalThis as any).paymentResultParams = null;
+
+    console.log("🏠 handleGoHome() - reset về HomeTab");
+    // Reset stack về MainTab và chọn HomeTab
+    resetToHomeTab();
   };
 
   const handleBuyAgain = () => {
     // Clear any remaining payment params
-    global.paymentResultParams = null;
-    
-    // Navigate to Home
-    navigation.navigate("Home" as never);
+    (globalThis as any).paymentResultParams = null;
+
+    console.log("🛒 handleBuyAgain() - reset về HomeTab");
+    // Đưa người dùng về tab Home để mua lại
+    resetToHomeTab();
   };
 
   const handleCheckOrder = () => {
     // Clear any remaining payment params
-    global.paymentResultParams = null;
-    
+    (globalThis as any).paymentResultParams = null;
+
     // Navigate to OrderTracking
     navigation.navigate("OrderTracking" as never);
   };
@@ -387,10 +470,11 @@ const CheckVnPayMent = () => {
           </View>
         )}
 
-        {paymentResult.amount && (
+        {/* Giá trị đơn hàng (chỉ hiển thị khi thành công) */}
+        {paymentResult.status === "success" && paymentResult.amount && (
           <View style={styles.orderDetails}>
-            <Text style={styles.orderLabel}>Số tiền:</Text>
-            <Text style={styles.orderCode}>
+            <Text style={styles.orderLabel}>Giá trị đơn hàng:</Text>
+            <Text style={[styles.orderCode, { fontSize: 18, fontWeight: "bold", color: PRIMARY }]}>
               {paymentResult.amount.toLocaleString("vi-VN")}₫
             </Text>
           </View>
@@ -405,20 +489,11 @@ const CheckVnPayMent = () => {
                 <Text style={styles.orderCode}>{paymentResult.transactionId}</Text>
               </View>
             )}
-            
+
             {paymentResult.bankCode && (
               <View style={styles.orderDetails}>
                 <Text style={styles.orderLabel}>Ngân hàng:</Text>
                 <Text style={styles.orderCode}>{paymentResult.bankCode}</Text>
-              </View>
-            )}
-            
-            {paymentResult.paymentTime && (
-              <View style={styles.orderDetails}>
-                <Text style={styles.orderLabel}>Thời gian:</Text>
-                <Text style={styles.orderCode}>
-                  {new Date(paymentResult.paymentTime).toLocaleString("vi-VN")}
-                </Text>
               </View>
             )}
           </>
@@ -433,7 +508,7 @@ const CheckVnPayMent = () => {
                 <Text style={styles.orderCode}>{paymentResult.errorCode}</Text>
               </View>
             )}
-            
+
             {paymentResult.errorMessage && (
               <View style={styles.orderDetails}>
                 <Text style={styles.orderLabel}>Chi tiết lỗi:</Text>

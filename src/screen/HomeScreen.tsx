@@ -15,7 +15,10 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 import ProductCard from './productCard/ProductCard';
 import SaleProductCard from './productCard/SaleProductCard';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import API from '../api';   // 👉 BẠN NHỚ THÊM DÒNG NÀY (nếu file bạn chưa có)
 import { fetchAllProducts } from '../services/ProductServices';
 import { fetchBanners } from '../services/BannerServices';
 import { fetchCategories } from '../services/CategoryServices';
@@ -23,14 +26,12 @@ import { fetchSaleProducts } from '../services/SaleProduct';
 
 const { width } = Dimensions.get('window');
 
-// Color scheme
 const PRIMARY = '#0f766e';
 const ORANGE = '#f97316';
-const LIGHT_ORANGE_BG = '#fff7ed'; // Màu nền nhẹ cho Flash Sale
+const LIGHT_ORANGE_BG = '#fff7ed';
 const LIGHT_BG = '#f8faf9';
 const BORDER_COLOR = '#e8f0ed';
 
-// Layout constants
 const HORIZONTAL_PADDING = 12;
 const GRID_GAP = 12;
 const CARD_WIDTH = (width - HORIZONTAL_PADDING * 2 - GRID_GAP) / 2;
@@ -69,11 +70,24 @@ const HomeScreen = ({ navigation }: any) => {
     }
   };
 
+  // ⭐⭐⭐ ĐOẠN CODE BẠN MUỐN — CẬP NHẬT GIỎ HÀNG ⭐⭐⭐
+  const loadCartCount = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) return;
+
+      const res = await API.get(`/carts/${userId}`);
+      setCartCount(res.data?.items?.length || 0); // Backend clear → badge = 0
+    } catch (err) {
+      console.log("Lỗi load cart:", err);
+    }
+  };
+
   const handleBannerPress = (banner: any) => {
     navigation.navigate('BannerDT', { banner });
   };
 
-  // ... (Giữ nguyên logic banner auto scroll) ...
+  // Auto banner scroll
   useEffect(() => {
     if (banners.length === 0) return;
     const interval = setInterval(() => {
@@ -90,6 +104,18 @@ const HomeScreen = ({ navigation }: any) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width);
     setActiveIndex(idx);
   };
+
+  // ⭐⭐⭐ useFocusEffect — KHI THANH TOÁN XONG QUAY VỀ HOME ⭐⭐⭐
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log("🔄 Refresh Home khi quay lại từ thanh toán");
+
+      loadAllData();      // Load lại danh mục, banner, sản phẩm, flash sale
+      loadCartCount();    // Cập nhật badge giỏ hàng
+
+      return () => {};
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
@@ -137,12 +163,7 @@ const HomeScreen = ({ navigation }: any) => {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Search')}
         >
-          <Icon
-            name="search-outline"
-            size={18}
-            color={PRIMARY}
-            style={styles.searchIcon}
-          />
+          <Icon name="search-outline" size={18} color={PRIMARY} style={styles.searchIcon} />
           <Text style={styles.searchPlaceholder}>Tìm sản phẩm...</Text>
         </TouchableOpacity>
 
@@ -159,6 +180,7 @@ const HomeScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
+      {/* Body */}
       <ScrollView
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ backgroundColor: LIGHT_BG, paddingBottom: 20 }}
@@ -181,10 +203,7 @@ const HomeScreen = ({ navigation }: any) => {
                 onPress={() => handleBannerPress(b)}
               >
                 <View style={styles.bannerContainer}>
-                  <Image
-                    source={{ uri: b.banner }}
-                    style={styles.bannerImage}
-                  />
+                  <Image source={{ uri: b.banner }} style={styles.bannerImage} />
                   <View style={styles.bannerOverlay} />
                 </View>
               </TouchableOpacity>
@@ -193,10 +212,7 @@ const HomeScreen = ({ navigation }: any) => {
 
           <View style={styles.dotsContainer}>
             {banners.map((b, i) => (
-              <View
-                key={b.id || `dot-${i}`}
-                style={[styles.dot, i === activeIndex && styles.activeDot]}
-              />
+              <View key={i} style={[styles.dot, i === activeIndex && styles.activeDot]} />
             ))}
           </View>
         </View>
@@ -209,6 +225,7 @@ const HomeScreen = ({ navigation }: any) => {
               <Text style={styles.seeMore}>Tất cả</Text>
             </TouchableOpacity>
           </View>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -216,7 +233,7 @@ const HomeScreen = ({ navigation }: any) => {
           >
             {categories.slice(0, 6).map((cat, index) => (
               <TouchableOpacity
-                key={cat.code || `cat-${index}`}
+                key={cat.code || index}
                 style={styles.categoryBadge}
                 onPress={() =>
                   navigation.navigate('Category', {
@@ -226,10 +243,7 @@ const HomeScreen = ({ navigation }: any) => {
                 }
               >
                 <View style={styles.categoryBadgeImageWrapper}>
-                  <Image
-                    source={{ uri: cat.image }}
-                    style={styles.categoryBadgeImage}
-                  />
+                  <Image source={{ uri: cat.image }} style={styles.categoryBadgeImage} />
                 </View>
                 <Text style={styles.categoryBadgeName} numberOfLines={1}>
                   {cat.name}
@@ -239,57 +253,50 @@ const HomeScreen = ({ navigation }: any) => {
           </ScrollView>
         </View>
 
-      
+        {/* Flash Sale */}
         {saleProducts.length > 0 && (
           <View style={styles.flashSaleContainer}>
-            {/* Header của Flash Sale */}
             <TouchableOpacity style={styles.flashSaleHeader}>
               <View style={styles.flashSaleTitleRow}>
-                <Icon name="flash" size={20} color={ORANGE} style={{marginRight: 6}} />
+                <Icon name="flash" size={20} color={ORANGE} style={{ marginRight: 6 }} />
                 <View>
-                    <Text style={styles.flashSaleTitleText}>FLASH SALE</Text>
-                    {/* <Text style={styles.flashSaleSubtitleText}>Kết thúc trong 02:15:30</Text> */}
+                  <Text style={styles.flashSaleTitleText}>FLASH SALE</Text>
                 </View>
               </View>
               <View style={styles.viewAllBtn}>
-                 <Text style={styles.viewAllText}>Xem tất cả</Text>
-                 <Icon name="chevron-forward" size={16} color="#666" />
+                <Text style={styles.viewAllText}>Xem tất cả</Text>
+                <Icon name="chevron-forward" size={16} color="#666" />
               </View>
             </TouchableOpacity>
 
-            {/* List sản phẩm */}
             <FlatList
               data={saleProducts}
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item, index) => item._id || `sale-${index}`}
+              keyExtractor={(item, index) => item._id || index}
               contentContainerStyle={styles.flashSaleListContent}
-              // 🔥 QUAN TRỌNG: Thêm khoảng cách giữa các item
               ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
               renderItem={({ item }) => (
                 <View style={styles.saleItemWrapper}>
-                    <SaleProductCard item={item} navigation={navigation} />
+                  <SaleProductCard item={item} navigation={navigation} />
                 </View>
               )}
             />
           </View>
         )}
-        {/* ======================================================= */}
-
 
         {/* All Products */}
         <View style={styles.productsSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Gợi ý cho bạn</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AllProducts')}
-            >
+            <TouchableOpacity onPress={() => navigation.navigate('AllProducts')}>
               <Text style={styles.seeMore}>Xem thêm</Text>
             </TouchableOpacity>
           </View>
+
           <FlatList
             data={products}
-            keyExtractor={(item, index) => item._id || `product-${index}`}
+            keyExtractor={(item, index) => item._id || index}
             numColumns={2}
             columnWrapperStyle={styles.columnWrapper}
             contentContainerStyle={styles.productsContent}
