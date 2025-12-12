@@ -2,14 +2,10 @@ import API from "../api";
 
 export const fetchSaleProducts = async () => {
   try {
-    console.log("🚀 fetchSaleProducts() được gọi");
-
-    const res = await API.get("/sale-products");
-    console.log("📦 SALE DATA:", res.data);
-
-    return res.data || [];
+    const res = await API.get("/sale-products/active");
+    return Array.isArray(res.data) ? res.data : [];
   } catch (error) {
-    console.error("❌ [Service] LỖI fetchSaleProducts:", error);
+    console.error("❌ fetchSaleProducts error:", error);
     return [];
   }
 };

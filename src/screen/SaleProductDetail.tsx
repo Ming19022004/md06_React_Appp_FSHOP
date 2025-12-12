@@ -67,8 +67,17 @@ const SaleProductDetail = ({ route, navigation }: any) => {
              }
           }
         }
-      } catch (error) {
-        console.error('❌ Lỗi lấy sản phẩm sale:', error);
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status === 403) {
+          Alert.alert(
+            'Thông báo',
+            'Sản phẩm khuyến mãi đã ngừng kinh doanh',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+          return;
+        }
+
         Alert.alert('Lỗi', 'Không thể tải sản phẩm. Vui lòng thử lại sau.');
         navigation.goBack();
       } finally {

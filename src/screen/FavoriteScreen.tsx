@@ -35,15 +35,23 @@ const FavoriteScreen = ({ navigation }: any) => {
         return;
       }
 
-      const productDetails = data.map((fav: any) => ({
-        _id: fav.productId,
-        name: fav.product?.name || fav.saleProduct?.name || 'Không rõ tên',
-        // Ưu tiên lấy giá sale nếu có
-        price: fav.saleProduct?.discount_price || fav.product?.price || 0,
-        image: fav.product?.image || fav.saleProduct?.image,
-        // QUAN TRỌNG: Lấy type để phân biệt
-        type: fav.type || 'normal', 
-      }));
+      const productDetails = data
+        .map((fav: any) => {
+          const p = fav.saleProduct || fav.product;
+
+          // 🔥 BỎ SALE / PRODUCT ĐÃ BỊ ẨN
+          if (p?.isActive === false) return null;
+
+          return {
+            _id: fav.productId,
+            name: p?.name || 'Không rõ tên',
+            price: fav.saleProduct?.discount_price || fav.product?.price || 0,
+            image: p?.image || p?.images?.[0],
+            type: fav.type || 'normal',
+          };
+        })
+        .filter(Boolean);
+
 
       const filtered = productDetails.filter((p) => p !== null);
       setFavoriteItems(filtered);

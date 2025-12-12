@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 const SaleProductCard = ({ item, navigation }: any) => {
+  if (item?.isActive === false) return null;
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
