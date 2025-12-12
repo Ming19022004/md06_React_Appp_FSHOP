@@ -49,7 +49,7 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
  const fetchProduct = async () => {
   try {
-    const res = await API.get(`/products/${productId}`);
+    const res = await API.get(`/products/${productId}/detail`);
     if (res.status === 403 || res.data?.message === "Sản phẩm tạm thời không khả dụng") {
       Alert.alert(
         "Thông báo",
@@ -361,6 +361,37 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           <View style={styles.divider} />
           <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
           <Text style={styles.descriptionText}>{product.description}</Text>
+           <View style={styles.divider} />
+
+<Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
+
+{comments.length === 0 ? (
+  <Text style={{ color: "#6b7280", marginBottom: 20 }}>
+    Chưa có đánh giá nào.
+  </Text>
+) : (
+  comments.map((c, index) => (
+    <View key={index} style={styles.commentItem}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Icon name="person-circle" size={32} color="#6b7280" />
+        <View style={{ marginLeft: 10 }}>
+          <Text style={styles.commentUser}>{c.user?.name || "Người dùng"}</Text>
+          <Text style={styles.commentDate}>
+            {new Date(c.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', marginTop: 6 }}>
+        {Array.from({ length: c.rating }).map((_, i) => (
+          <Icon key={i} name="star" size={16} color="#fbbf24" />
+        ))}
+      </View>
+
+      <Text style={styles.commentText}>{c.content}</Text>
+    </View>
+  ))
+)}
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
@@ -574,4 +605,29 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   checkoutText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  commentItem: {
+  backgroundColor: "#f9fafb",
+  padding: 14,
+  borderRadius: 12,
+  marginBottom: 12,
+  borderWidth: 1,
+  borderColor: "#e5e7eb",
+},
+commentUser: {
+  fontSize: 14,
+  fontWeight: '700',
+  color: '#111827',
+},
+commentDate: {
+  fontSize: 12,
+  color: '#6b7280',
+  marginTop: 2,
+},
+commentText: {
+  marginTop: 8,
+  fontSize: 14,
+  color: '#374151',
+  lineHeight: 20,
+},
+
 });
