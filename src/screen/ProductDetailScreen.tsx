@@ -47,56 +47,54 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     return () => Snackbar.dismiss();
   }, []);
 
- const fetchProduct = async () => {
-  try {
-    const res = await API.get(`/products/${productId}/detail`);
-    if (res.status === 403 || res.data?.message === "Sản phẩm tạm thời không khả dụng") {
-      Alert.alert(
-        "Thông báo",
-        "Sản phẩm ngừng kinh doanh.",
-        [
+  const fetchProduct = async () => {
+    try {
+      const res = await API.get(`/products/${productId}/detail`);
+      if (
+        res.status === 403 ||
+        res.data?.message === 'Sản phẩm tạm thời không khả dụng'
+      ) {
+        Alert.alert('Thông báo', 'Sản phẩm ngừng kinh doanh.', [
           {
-            text: "OK",
+            text: 'OK',
             onPress: () => navigation.goBack(),
           },
-        ]
-      );
-      return;
+        ]);
+        return;
+      }
+
+      const productData = res.data.data || res.data.product || res.data;
+      setProduct(productData);
+
+      if (productData.sizes && productData.sizes.length > 0) {
+        const availableSize = productData.sizes.find(
+          (s: any) => s.quantity > 0,
+        );
+        if (availableSize) setSelectedSize(availableSize.size);
+      }
+
+      setComments(res.data.comments || []);
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        Alert.alert(
+          'Sản phẩm không khả dụng',
+          'Sản phẩm đã ngừng kinh doanh.',
+          [
+            {
+              text: 'Quay lại',
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+        return;
+      }
+
+      console.error('Error fetching product:', error);
+      Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm.');
+    } finally {
+      setLoading(false);
     }
-
-    const productData = res.data.data || res.data.product || res.data;
-    setProduct(productData);
-
-    if (productData.sizes && productData.sizes.length > 0) {
-      const availableSize = productData.sizes.find(
-        (s: any) => s.quantity > 0
-      );
-      if (availableSize) setSelectedSize(availableSize.size);
-    }
-
-    setComments(res.data.comments || []);
-
-  } catch (error: any) {
-    if (error.response?.status === 403) {
-      Alert.alert(
-        "Sản phẩm không khả dụng",
-        "Sản phẩm đã ngừng kinh doanh.",
-        [
-          {
-            text: "Quay lại",
-            onPress: () => navigation.goBack(),
-          }
-        ]
-      );
-      return;
-    }
-
-    console.error('Error fetching product:', error);
-    Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const checkBookmark = async () => {
     try {
@@ -140,7 +138,10 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
   const handleAddToCart = async () => {
     if (!selectedSize) {
-      Alert.alert('Thông báo', 'Vui lòng chọn size trước khi thêm vào giỏ hàng!');
+      Alert.alert(
+        'Thông báo',
+        'Vui lòng chọn size trước khi thêm vào giỏ hàng!',
+      );
       return;
     }
 
@@ -199,7 +200,9 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         return;
       }
       if (bookmark) {
-        await API.delete(`/favorites/${userId}/${productId}?type=${productType}`);
+        await API.delete(
+          `/favorites/${userId}/${productId}?type=${productType}`,
+        );
         setBookMark(false);
         Snackbar.show({ text: 'Đã xóa khỏi yêu thích' });
       } else {
@@ -258,7 +261,10 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.imageContainer}>
           <Image
             source={{ uri: product.images?.[currentImageIndex] }}
@@ -289,8 +295,13 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
 
         <View style={styles.infoContainer}>
           <Text style={styles.productName}>{product.name}</Text>
+          {/* ⭐ Tổng kho tất cả size */}
+          <Text style={{ color: '#6b7280', marginBottom: 10 }}>
+            Tổng kho: {product.sizes?.reduce((sum, s) => sum + s.quantity, 0)}{' '}
+            sản phẩm
+          </Text>
           {product.stock === 0 && (
-            <Text style={{ color: "red", marginBottom: 6 }}>
+            <Text style={{ color: 'red', marginBottom: 6 }}>
               Sản phẩm tạm thời hết hàng
             </Text>
           )}
@@ -299,7 +310,7 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
             <Text style={styles.priceText}>
               {(product?.price ?? 0).toLocaleString()} ₫
             </Text>
-            
+
             <View style={styles.ratingBox}>
               <Icon name="star" size={16} color="#fbbf24" />
               <Text style={styles.ratingText}>4.8</Text>
@@ -311,6 +322,14 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Chọn Size</Text>
+          {/* ⭐ Kho size đang chọn */}
+          {selectedSize && (
+            <Text style={{ color: '#6b7280', marginBottom: 10 }}>
+              Tồn kho size {selectedSize}:{' '}
+              {product.sizes.find((s: any) => s.size === selectedSize)
+                ?.quantity ?? 0}
+            </Text>
+          )}
           <View style={styles.sizeList}>
             {product.sizes?.map((s: any) => (
               <TouchableOpacity
@@ -361,37 +380,39 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           <View style={styles.divider} />
           <Text style={styles.sectionTitle}>Mô tả sản phẩm</Text>
           <Text style={styles.descriptionText}>{product.description}</Text>
-           <View style={styles.divider} />
+          <View style={styles.divider} />
 
-<Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
+          <Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
 
-{comments.length === 0 ? (
-  <Text style={{ color: "#6b7280", marginBottom: 20 }}>
-    Chưa có đánh giá nào.
-  </Text>
-) : (
-  comments.map((c, index) => (
-    <View key={index} style={styles.commentItem}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Icon name="person-circle" size={32} color="#6b7280" />
-        <View style={{ marginLeft: 10 }}>
-          <Text style={styles.commentUser}>{c.user?.name || "Người dùng"}</Text>
-          <Text style={styles.commentDate}>
-            {new Date(c.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-      </View>
+          {comments.length === 0 ? (
+            <Text style={{ color: '#6b7280', marginBottom: 20 }}>
+              Chưa có đánh giá nào.
+            </Text>
+          ) : (
+            comments.map((c, index) => (
+              <View key={index} style={styles.commentItem}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Icon name="person-circle" size={32} color="#6b7280" />
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.commentUser}>
+                      {c.user?.name || 'Người dùng'}
+                    </Text>
+                    <Text style={styles.commentDate}>
+                      {new Date(c.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
 
-      <View style={{ flexDirection: 'row', marginTop: 6 }}>
-        {Array.from({ length: c.rating }).map((_, i) => (
-          <Icon key={i} name="star" size={16} color="#fbbf24" />
-        ))}
-      </View>
+                <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                  {Array.from({ length: c.rating }).map((_, i) => (
+                    <Icon key={i} name="star" size={16} color="#fbbf24" />
+                  ))}
+                </View>
 
-      <Text style={styles.commentText}>{c.content}</Text>
-    </View>
-  ))
-)}
+                <Text style={styles.commentText}>{c.content}</Text>
+              </View>
+            ))
+          )}
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
@@ -404,12 +425,11 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.checkoutButton,
-            product.stock === 0 && { backgroundColor: "#ccc" }
+            product.stock === 0 && { backgroundColor: '#ccc' },
           ]}
           disabled={product.stock === 0}
           onPress={handleAddToCart}
         >
-
           <Icon name="cart" size={20} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.checkoutText}>Thêm vào giỏ</Text>
         </TouchableOpacity>
@@ -606,28 +626,27 @@ const styles = StyleSheet.create({
   },
   checkoutText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   commentItem: {
-  backgroundColor: "#f9fafb",
-  padding: 14,
-  borderRadius: 12,
-  marginBottom: 12,
-  borderWidth: 1,
-  borderColor: "#e5e7eb",
-},
-commentUser: {
-  fontSize: 14,
-  fontWeight: '700',
-  color: '#111827',
-},
-commentDate: {
-  fontSize: 12,
-  color: '#6b7280',
-  marginTop: 2,
-},
-commentText: {
-  marginTop: 8,
-  fontSize: 14,
-  color: '#374151',
-  lineHeight: 20,
-},
-
+    backgroundColor: '#f9fafb',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  commentUser: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  commentDate: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  commentText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
 });
