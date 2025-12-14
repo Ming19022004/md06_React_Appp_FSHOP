@@ -5,18 +5,18 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import MCI from 'react-native-vector-icons/MaterialCommunityIcons'
-import { useNavigation } from '@react-navigation/native'
+import MCI from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import API from '../api';
-import { GoogleSignin } from '@react-native-google-signin/google-signin'
-import { LoginManager } from 'react-native-fbsdk-next'
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { LoginManager } from 'react-native-fbsdk-next';
 
-
-
+// --- PHẦN KHAI BÁO TYPE VÀ MENU ---
 type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -42,12 +42,25 @@ const menuItems: MenuItem[] = [
   { icon: 'chat-outline', label: 'Trò chuyện', screen: 'Chat' },
   { icon: 'shield-lock-outline', label: 'Chính sách và bảo mật', screen: 'PrivacyPolicy' },
 ];
+// -----------------------------------------------------
 
 const AccountScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 1. Cấu hình Google
+  useEffect(() => {
+    try {
+      GoogleSignin.configure({
+        webClientId: '134198151461-6jq2sd1ivaq98rdr9topkb3nktnkj5ls.apps.googleusercontent.com',
+        offlineAccess: false,
+      });
+    } catch (e) {
+      console.log('Google Config Error:', e);
+    }
+  }, []);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -59,54 +72,66 @@ const AccountScreen: React.FC = () => {
     return unsubscribe;
   }, [navigation]);
 
+  // 2. Hàm đăng xuất "An toàn" (Anti-Crash)
   const doLogout = async () => {
+    setIsLoading(true);
+    setConfirmLogout(false); // Đóng modal ngay
+
     try {
-      GoogleSignin.configure({
-        webClientId: '134198151461-6jq2sd1ivaq98rdr9topkb3nktnkj5ls.apps.googleusercontent.com',
-      });
-  
-      const currentUser = await GoogleSignin.getCurrentUser();
-      if (currentUser) {
-        await GoogleSignin.revokeAccess();
-        await GoogleSignin.signOut();
-      }
-  
-      await LoginManager.logOut();
+      // BƯỚC 1: Xóa dữ liệu nội bộ App (QUAN TRỌNG NHẤT)
       await AsyncStorage.clear();
-  
-      Alert.alert('Đã đăng xuất!');
       setIsLoggedIn(false);
+
+      // BƯỚC 2: Điều hướng về Login NGAY LẬP TỨC (Không chờ Google)
+      // Điều này đảm bảo dù Google có lỗi native thì user cũng đã về màn Login rồi
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
       });
-    } catch (err) {
-      console.error('❌ Logout error:', err);
-      Alert.alert('Lỗi', 'Không thể đăng xuất');
-    }
-  };
 
-  const deleteProfile = async () => {
-    try {
-      const userId = await AsyncStorage.getItem('userId');
-      if (!userId) {
-        Alert.alert('Lỗi', 'Không tìm thấy tài khoản');
-        return;
-      }
-      await API.delete(`/users/${userId}`);
-      await AsyncStorage.clear();
-      Alert.alert('Tài khoản đã được xoá');
-      setIsLoggedIn(false);
-      navigation.navigate('Login');
+      // BƯỚC 3: Xử lý dọn dẹp Google/Facebook chạy ngầm (Silent Logout)
+      // Dùng setTimeout để tách nó ra khỏi luồng UI chính
+      setTimeout(async () => {
+        try {
+          // Xử lý Google an toàn
+          const hasPlayService = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false }).catch(() => false);
+          if (hasPlayService) {
+            const isSignedIn = await GoogleSignin.isSignedIn().catch(() => false);
+            if (isSignedIn) {
+              await GoogleSignin.signOut().catch((e) => console.log('Google SignOut Silent Error:', e));
+            }
+          }
+
+          // Xử lý Facebook
+          LoginManager.logOut();
+        } catch (err) {
+          console.log('⚠️ Cleanup error (Ignored):', err);
+        } finally {
+          setIsLoading(false);
+        }
+      }, 500); // Chạy sau 0.5 giây
+
     } catch (err) {
-      Alert.alert('Lỗi', 'Không thể xoá hồ sơ');
+      console.error('❌ System Logout Error:', err);
+      // Fallback: Vẫn cố gắng đưa về màn hình Login
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+      setIsLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* Loading Overlay */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{color: '#fff', marginTop: 10}}>Đang đăng xuất...</Text>
+        </View>
+      )}
+
       <Text style={styles.header}>COOL MATE</Text>
 
+      {/* Menu Items Loop */}
       {menuItems.map((m) => (
         <TouchableOpacity
           key={m.icon}
@@ -119,7 +144,6 @@ const AccountScreen: React.FC = () => {
         </TouchableOpacity>
       ))}
 
-      {/* Nếu đã đăng nhập thì hiện nút đăng xuất */}
       {isLoggedIn && (
         <TouchableOpacity style={styles.row} onPress={() => setConfirmLogout(true)}>
           <MCI name="logout" size={22} color="#e11d48" />
@@ -127,7 +151,6 @@ const AccountScreen: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      {/* Nếu chưa đăng nhập thì hiện nút đăng nhập & đăng ký */}
       {!isLoggedIn && (
         <>
           <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Login')}>
@@ -142,7 +165,7 @@ const AccountScreen: React.FC = () => {
         </>
       )}
 
-      {/* Modal xác nhận đăng xuất */}
+      {/* Modal xác nhận */}
       {confirmLogout && (
         <View style={styles.modal}>
           <Text style={styles.modalText}>Bạn có muốn đăng xuất tài khoản không?</Text>
@@ -205,13 +228,21 @@ const styles = StyleSheet.create({
       borderRadius: 12,
       padding: 18,
     },
-      modalText: {
+    modalText: {
         fontWeight: '600',
         textAlign: 'center',
         marginBottom: 16,
         color: '#111827',
-   },
+    },
     btnWrap: { flexDirection: 'row', justifyContent: 'space-evenly' },
     btn: { paddingVertical: 10, paddingHorizontal: 28, borderRadius: 8 },
     btnTxt: { color: '#fff', fontWeight: '600' },
+    loadingOverlay: {
+      position: 'absolute',
+      top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 999,
+    }
 });

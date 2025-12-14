@@ -1,6 +1,16 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 🔥 QUAN TRỌNG: Bắt buộc phải có quyền này trên Android 13+ (API 33+) để hiện thông báo -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Cần thiết để điện thoại rung khi có thông báo (vibration: true) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Giúp App nhận thông báo ngay cả khi vừa khởi động máy -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".MainApplication"
@@ -11,7 +21,6 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="${usesCleartextTraffic}"
         android:supportsRtl="true">
-
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
@@ -19,28 +28,23 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-
-           
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <intent-filter android:autoVerify="true">
+            <!-- (Tùy chọn) Thêm đoạn này nếu bạn muốn DeepLink hoạt động trơn tru hơn từ trình duyệt -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="coolmate" android:host="payment-result" />
+                <data android:scheme="coolmate" />
             </intent-filter>
-
-         
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="coolmate"/>
-            </intent-filter>
-
         </activity>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel"
+            tools:replace="android:value"/>
     </application>
 </manifest>
