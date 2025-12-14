@@ -58,12 +58,12 @@ export default function RegisterScreen({navigation}:any) {
 
     return(
         <ImageBackground 
-        source={require('../assets/images/backgroundR.png')}
+        source={require('../assets/images/logo_app.png')}
         style={styles.background}
         resizeMode="cover"
         >
             <View style={styles.container}>
-                <Text>Dang ky</Text>
+                <Text>Đăng Ký</Text>
                 
 
                 <View style={styles.inputContainer}>
@@ -91,7 +91,7 @@ export default function RegisterScreen({navigation}:any) {
 
                 <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Mat khau"
+                    placeholder="Mật Khẩu"
                     placeholderTextColor={"#aaa"}
                     style={styles.input}
                     secureTextEntry
@@ -103,7 +103,7 @@ export default function RegisterScreen({navigation}:any) {
 
                  <View style={styles.inputContainer}>
                     <TextInput
-                    placeholder="Xac nhan mat khau"
+                    placeholder="Xác Nhận Mật Khẩu"
                     placeholderTextColor={"#aaa"}
                     style={styles.input}
                     secureTextEntry
