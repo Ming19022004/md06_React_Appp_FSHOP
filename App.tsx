@@ -9,7 +9,7 @@ import messaging from '@react-native-firebase/messaging';
 import io from 'socket.io-client';
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 
-// --- IMPORT SCREENS ---
+// --- IMPORT SCREENS (Giữ nguyên) ---
 import LoginScreen from "./src/login/LoginScreen";
 import RegisterScreen from "./src/login/RegisterScreen";
 import SplashScreen from "./src/screen/SplashScreen";
@@ -28,7 +28,7 @@ import CheckVnPayMent from './src/screen/payment/CheckVnPayMent';
 import NotificationScreen from "./src/screen/NotificationScreen";
 import SaleProductDetail from './src/screen/SaleProductDetail';
 
-// ⚠️ IP CỦA BẠN (Check lại IP nếu mạng đổi)
+// ⚠️ IP CỦA BẠN
 const SOCKET_URL = 'http://192.168.1.93:3002';
 const CHANNEL_ID = 'coolmate_notification_v6';
 
@@ -39,10 +39,12 @@ export default function App() {
   const navigationRef = useRef(null);
   const [socket, setSocket] = useState(null);
 
-  // 1. Setup Channel
+  // 1. Setup Channel & Permission
   useEffect(() => {
     const setupApp = async () => {
       await notifee.requestPermission();
+      await messaging().requestPermission(); // Xin thêm quyền FCM
+
       await notifee.createChannel({
         id: CHANNEL_ID,
         name: 'Thông báo đơn hàng (V6)',
@@ -55,21 +57,7 @@ export default function App() {
     setupApp();
   }, []);
 
-  // 2. Lắng nghe FCM khi đang Mở App (Foreground)
-  useEffect(() => {
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      console.log('📢 FCM Foreground:', remoteMessage);
-      await onDisplayNotification({
-        title: remoteMessage.notification?.title || 'Thông báo mới',
-        message: remoteMessage.notification?.body || 'Bạn có tin nhắn mới',
-        data: remoteMessage.data,
-        orderId: remoteMessage.data?.orderId
-      });
-    });
-    return unsubscribe;
-  }, []);
-
-  // 3. Kết nối Socket
+  // 2. KẾT HỢP SOCKET (Xử lý realtime khi App mở)
   useEffect(() => {
     console.log('🔌 Connecting Socket:', SOCKET_URL);
     const newSocket = io(SOCKET_URL, { transports: ['websocket'], forceNew: true });
@@ -85,19 +73,18 @@ export default function App() {
       }
     });
 
+    // Sự kiện 1: Notification chung
     newSocket.on('notification received', async (data) => {
-      console.log('📩 Socket Noti:', data);
+      console.log('⚡ Socket [notification]:', data);
       await onDisplayNotification(data);
     });
 
+    // Sự kiện 2: Update Status
     newSocket.on('orderStatusUpdated', async (data) => {
-      console.log('♻️ Socket Update:', data);
+      console.log('⚡ Socket [orderStatus]:', data);
       const statusMap = {
-        pending: "Đang chờ xử lý",
-        confirmed: "Đã xác nhận",
-        shipped: "Đang giao hàng",
-        delivered: "Đã giao hàng",
-        cancelled: "Đã hủy"
+        pending: "Đang chờ xử lý", confirmed: "Đã xác nhận",
+        shipped: "Đang giao hàng", delivered: "Đã giao hàng", cancelled: "Đã hủy"
       };
       await onDisplayNotification({
         title: 'Cập nhật đơn hàng',
@@ -110,27 +97,61 @@ export default function App() {
     return () => newSocket.disconnect();
   }, []);
 
-  // 4. Hàm hiển thị (Đã sửa lỗi Icon)
+  // 3. KẾT HỢP FCM (Xử lý song song)
+  useEffect(() => {
+    // Lấy Token để in ra console (Dùng để test bắn từ Firebase Console)
+    messaging().getToken().then(token => console.log('🔥 FCM TOKEN:', token));
+
+    // A. FCM khi App đang Mở (Foreground)
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('📢 FCM Foreground:', remoteMessage);
+      // Hiển thị Banner
+      await onDisplayNotification({
+        title: remoteMessage.notification?.title || 'Thông báo mới',
+        message: remoteMessage.notification?.body || 'Bạn có tin nhắn mới',
+        data: remoteMessage.data,
+        orderId: remoteMessage.data?.orderId
+      });
+    });
+
+    // B. FCM khi bấm vào thông báo lúc App chạy ngầm (Background -> Open)
+    messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('👆 FCM Background Click:', remoteMessage);
+      handleNavigation(remoteMessage.data);
+    });
+
+    // C. FCM khi bấm vào thông báo lúc App đã Tắt (Quit -> Open)
+    messaging().getInitialNotification().then(remoteMessage => {
+      if (remoteMessage) {
+        console.log('🚀 FCM Quit Click:', remoteMessage);
+        // Delay xíu để App load xong navigation
+        setTimeout(() => handleNavigation(remoteMessage.data), 1000);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // 4. Hàm hiển thị thông báo chung
   async function onDisplayNotification(rawPayload) {
     try {
       const cleanData = { screen: 'OrderTracking' };
-      if (rawPayload) {
-        const notiId = rawPayload._id || rawPayload.id || Date.now().toString();
-        cleanData.id = String(notiId);
-        if (rawPayload.data && typeof rawPayload.data === 'object') {
-            Object.keys(rawPayload.data).forEach(key => cleanData[key] = String(rawPayload.data[key]));
-        }
-        if (rawPayload.orderId) cleanData.orderId = String(rawPayload.orderId);
+      const notiId = rawPayload._id || rawPayload.id || Date.now().toString(); // ID để tránh trùng
+      cleanData.id = String(notiId);
+
+      if (rawPayload.data && typeof rawPayload.data === 'object') {
+          Object.keys(rawPayload.data).forEach(key => cleanData[key] = String(rawPayload.data[key]));
       }
+      if (rawPayload.orderId) cleanData.orderId = String(rawPayload.orderId);
 
       await notifee.displayNotification({
+        id: notiId, // Quan trọng: Nếu socket và FCM cùng bắn 1 ID, nó sẽ chỉ hiện 1 cái
         title: rawPayload.title || '🔔 Thông báo',
         body: rawPayload.message || 'Kiểm tra ngay',
         android: {
           channelId: CHANNEL_ID,
           importance: AndroidImportance.HIGH,
-          // ✅ QUAN TRỌNG: Dùng icon hệ thống để tránh lỗi Android 13+
-          smallIcon: 'ic_launcher',
+          smallIcon: 'ic_launcher', // Giữ icon của bạn
           pressAction: { id: 'default', launchActivity: 'default' },
           visibility: 1,
         },
@@ -139,25 +160,30 @@ export default function App() {
     } catch (error) { console.error("Lỗi Noti:", error); }
   }
 
-  // 5. Handle Click
+  // Hàm điều hướng chung
+  const handleNavigation = (data) => {
+    if (navigationRef.current && data) {
+      if (data.orderId) {
+        navigationRef.current.navigate('OrderTracking', { orderId: data.orderId });
+      } else {
+        navigationRef.current.navigate('Notification');
+      }
+    }
+  };
+
+  // 5. Xử lý Click vào Banner Notifee (Local)
   useEffect(() => {
     return notifee.onForegroundEvent(({ type, detail }) => {
-      if (type === EventType.PRESS && navigationRef.current) {
-        const { notification } = detail;
-        if (notification?.data?.orderId) {
-             navigationRef.current.navigate('OrderTracking', { orderId: notification.data.orderId });
-        } else {
-             navigationRef.current.navigate('Notification');
-        }
+      if (type === EventType.PRESS) {
+        handleNavigation(detail.notification?.data);
       }
     });
   }, []);
 
-  // 6. DeepLink & FCM Token
+  // 6. DeepLink
   useEffect(() => {
     const handleDeepLink = (url) => {
       if (url?.includes('payment-result')) {
-         // Logic xử lý deep link payment cũ của bạn...
          try {
             const urlParts = url.split('?');
             if (urlParts.length > 1) {
@@ -174,10 +200,6 @@ export default function App() {
     Linking.getInitialURL().then(url => { if (url) handleDeepLink(url) });
     const sub = Linking.addEventListener('url', e => handleDeepLink(e.url));
     return () => sub.remove();
-  }, []);
-
-  useEffect(() => {
-    messaging().getToken().then(t => console.log('🔥 FCM TOKEN:', t));
   }, []);
 
   return (

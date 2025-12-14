@@ -1,47 +1,41 @@
 /**
  * @format
  */
-import { AppRegistry } from 'react-native';
+import {AppRegistry} from 'react-native';
 import App from './App';
-import { name as appName } from './app.json';
+import {name as appName} from './app.json';
+
+// --- THÊM ĐOẠN NÀY ---
 import messaging from '@react-native-firebase/messaging';
 import notifee, { AndroidImportance } from '@notifee/react-native';
 
-// 🔥 PHẦN QUAN TRỌNG NHẤT: Xử lý khi App Tắt / Màn hình Home 🔥
+// Hàm này sẽ chạy ngầm khi App đã tắt hoàn toàn
 messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('💤 FCM Background Message:', remoteMessage);
+  console.log('💤 FCM Background/Quit:', remoteMessage);
 
-  // 1. Tạo lại Channel (bắt buộc vì app tắt có thể mất config)
+  // Tự hiển thị thông báo bằng Notifee để đồng bộ giao diện với Socket
   const channelId = await notifee.createChannel({
     id: 'coolmate_notification_v6',
     name: 'Thông báo đơn hàng (V6)',
     importance: AndroidImportance.HIGH,
-    visibility: 1,
+    sound: 'default',
+    vibration: true,
   });
 
-  // 2. Tự hiển thị thông báo
   await notifee.displayNotification({
     title: remoteMessage.notification?.title || 'Thông báo mới',
-    body: remoteMessage.notification?.body || 'Bạn có thông báo mới',
+    body: remoteMessage.notification?.body || 'Bạn có tin nhắn mới',
     android: {
       channelId,
-      // ⚠️ Phải dùng icon hệ thống để không bị lỗi ẩn thông báo
-      smallIcon: 'ic_launcher',
+      smallIcon: 'ic_launcher', // Giữ icon của bạn
       pressAction: {
         id: 'default',
         launchActivity: 'default',
       },
     },
-    data: remoteMessage.data,
+    data: remoteMessage.data, // Lưu data để xử lý click
   });
 });
+// ---------------------
 
-// Chặn lỗi crash nếu chạy headless trên iOS/Android
-function HeadlessCheck({ isHeadless }) {
-  if (isHeadless) {
-    return null;
-  }
-  return <App />;
-}
-
-AppRegistry.registerComponent(appName, () => HeadlessCheck);
+AppRegistry.registerComponent(appName, () => App);
