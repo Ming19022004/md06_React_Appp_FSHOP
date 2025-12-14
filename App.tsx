@@ -28,10 +28,8 @@ import CheckVnPayMent from './src/screen/payment/CheckVnPayMent';
 import NotificationScreen from "./src/screen/NotificationScreen";
 import SaleProductDetail from './src/screen/SaleProductDetail';
 
-// ⚠️ IP CỦA BẠN (Kiểm tra lại nếu đổi mạng)
+// ⚠️ IP CỦA BẠN (Check lại IP nếu mạng đổi)
 const SOCKET_URL = 'http://192.168.1.93:3002';
-
-// 🔥 NÂNG LÊN V6 ĐỂ RESET CẤU HÌNH (QUAN TRỌNG)
 const CHANNEL_ID = 'coolmate_notification_v6';
 
 const Stack = createNativeStackNavigator();
@@ -41,65 +39,59 @@ export default function App() {
   const navigationRef = useRef(null);
   const [socket, setSocket] = useState(null);
 
-  // 1. Setup Channel & Permission
+  // 1. Setup Channel
   useEffect(() => {
     const setupApp = async () => {
       await notifee.requestPermission();
-
-      // Tạo Channel mới V6
       await notifee.createChannel({
         id: CHANNEL_ID,
         name: 'Thông báo đơn hàng (V6)',
         importance: AndroidImportance.HIGH,
         sound: 'default',
         vibration: true,
-        visibility: 1, // Hiện trên màn hình khóa
+        visibility: 1,
       });
     };
     setupApp();
   }, []);
 
-  // 2. Kết nối Socket
+  // 2. Lắng nghe FCM khi đang Mở App (Foreground)
   useEffect(() => {
-    console.log('🔌 Đang kết nối Socket tới:', SOCKET_URL);
-
-    const newSocket = io(SOCKET_URL, {
-      transports: ['websocket'],
-      forceNew: true,
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('📢 FCM Foreground:', remoteMessage);
+      await onDisplayNotification({
+        title: remoteMessage.notification?.title || 'Thông báo mới',
+        message: remoteMessage.notification?.body || 'Bạn có tin nhắn mới',
+        data: remoteMessage.data,
+        orderId: remoteMessage.data?.orderId
+      });
     });
+    return unsubscribe;
+  }, []);
+
+  // 3. Kết nối Socket
+  useEffect(() => {
+    console.log('🔌 Connecting Socket:', SOCKET_URL);
+    const newSocket = io(SOCKET_URL, { transports: ['websocket'], forceNew: true });
     setSocket(newSocket);
 
     newSocket.on('connect', async () => {
-      console.log('🟢 SOCKET CONNECTED ID:', newSocket.id);
-
+      console.log('🟢 SOCKET CONNECTED:', newSocket.id);
       const userId = await AsyncStorage.getItem('userId');
-      console.log('👤 UserID trong App:', userId);
-
       if (userId) {
-        // Join đủ 3 phòng để bắt dính mọi sự kiện
         newSocket.emit("join notification room", userId);
         newSocket.emit("join notification room", `notification_${userId}`);
         newSocket.emit("join notification room", `order_${userId}`);
-
-        console.log(`✅ Đã Join 3 phòng: "${userId}", "notification_${userId}", "order_${userId}"`);
       }
     });
 
-    // Debug server events
-    newSocket.onAny((event, ...args) => {
-      console.log(`📡 [SERVER EVENT] ${event}:`, args);
-    });
-
-    // Case 1: Notification chuẩn
     newSocket.on('notification received', async (data) => {
-      console.log('📩 [notification received]:', data);
+      console.log('📩 Socket Noti:', data);
       await onDisplayNotification(data);
     });
 
-    // Case 2: Update Status từ Web Admin
     newSocket.on('orderStatusUpdated', async (data) => {
-      console.log('♻️ [orderStatusUpdated]:', data);
-
+      console.log('♻️ Socket Update:', data);
       const statusMap = {
         pending: "Đang chờ xử lý",
         confirmed: "Đã xác nhận",
@@ -107,69 +99,47 @@ export default function App() {
         delivered: "Đã giao hàng",
         cancelled: "Đã hủy"
       };
-      const statusText = statusMap[data.status] || data.status;
-
-      const fakeNotificationData = {
+      await onDisplayNotification({
         title: 'Cập nhật đơn hàng',
-        message: `Đơn hàng #${data.orderId || ''} đã chuyển sang: ${statusText}`,
+        message: `Đơn hàng #${data.orderId || ''}: ${statusMap[data.status] || data.status}`,
         orderId: data.orderId,
         data: data
-      };
-
-      await onDisplayNotification(fakeNotificationData);
+      });
     });
 
     return () => newSocket.disconnect();
   }, []);
 
-  // 3. Hàm hiển thị (ĐÃ BẬT LẠI ICON)
+  // 4. Hàm hiển thị (Đã sửa lỗi Icon)
   async function onDisplayNotification(rawPayload) {
     try {
       const cleanData = { screen: 'OrderTracking' };
-
       if (rawPayload) {
         const notiId = rawPayload._id || rawPayload.id || Date.now().toString();
         cleanData.id = String(notiId);
-
         if (rawPayload.data && typeof rawPayload.data === 'object') {
-            Object.keys(rawPayload.data).forEach(key => {
-                cleanData[key] = String(rawPayload.data[key]);
-            });
+            Object.keys(rawPayload.data).forEach(key => cleanData[key] = String(rawPayload.data[key]));
         }
-        if (rawPayload.orderId) {
-             cleanData.orderId = String(rawPayload.orderId);
-        }
+        if (rawPayload.orderId) cleanData.orderId = String(rawPayload.orderId);
       }
 
-      console.log('🧹 Hiển thị Banner V6...');
-
       await notifee.displayNotification({
-        title: rawPayload.title || '🔔 Cập nhật đơn hàng',
-        body: rawPayload.message || 'Trạng thái đơn hàng thay đổi.',
+        title: rawPayload.title || '🔔 Thông báo',
+        body: rawPayload.message || 'Kiểm tra ngay',
         android: {
-          channelId: CHANNEL_ID, // V6
+          channelId: CHANNEL_ID,
           importance: AndroidImportance.HIGH,
-
-          // ✅ BẬT LẠI DÒNG NÀY (BẮT BUỘC ĐỂ HIỆN TRÊN MÀN HÌNH HOME)
-          // ic_launcher là icon mặc định mà mọi app Android đều có
+          // ✅ QUAN TRỌNG: Dùng icon hệ thống để tránh lỗi Android 13+
           smallIcon: 'ic_launcher',
-
-          pressAction: {
-            id: 'default',
-            launchActivity: 'default',
-          },
+          pressAction: { id: 'default', launchActivity: 'default' },
           visibility: 1,
-          showTimestamp: true,
         },
         data: cleanData
       });
-
-    } catch (error) {
-      console.error("❌ Lỗi hiển thị thông báo:", error);
-    }
+    } catch (error) { console.error("Lỗi Noti:", error); }
   }
 
-  // 4. Click Handler
+  // 5. Handle Click
   useEffect(() => {
     return notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS && navigationRef.current) {
@@ -183,24 +153,22 @@ export default function App() {
     });
   }, []);
 
-  // 5. DeepLink
+  // 6. DeepLink & FCM Token
   useEffect(() => {
     const handleDeepLink = (url) => {
-      if (url && url.includes('payment-result')) {
-        try {
-          const urlParts = url.split('?');
-          if (urlParts.length > 1) {
-             const queryString = urlParts[1];
-             const searchParams = {};
-             queryString.split('&').forEach(param => {
-                 const [key, value] = param.split('=');
-                 if (key) searchParams[key] = decodeURIComponent(value || '');
-             });
-            if (navigationRef.current) {
-              navigationRef.current.navigate('CheckVnPayMent', { searchParams });
+      if (url?.includes('payment-result')) {
+         // Logic xử lý deep link payment cũ của bạn...
+         try {
+            const urlParts = url.split('?');
+            if (urlParts.length > 1) {
+               const searchParams = {};
+               urlParts[1].split('&').forEach(p => {
+                   const [k, v] = p.split('=');
+                   if (k) searchParams[k] = decodeURIComponent(v || '');
+               });
+               navigationRef.current?.navigate('CheckVnPayMent', { searchParams });
             }
-          }
-        } catch (error) { console.error("Lỗi DeepLink:", error); }
+         } catch(e) {}
       }
     };
     Linking.getInitialURL().then(url => { if (url) handleDeepLink(url) });
@@ -208,9 +176,8 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
-  // 6. FCM
   useEffect(() => {
-    messaging().getToken().then(token => console.log('🔥 FCM TOKEN:', token));
+    messaging().getToken().then(t => console.log('🔥 FCM TOKEN:', t));
   }, []);
 
   return (
