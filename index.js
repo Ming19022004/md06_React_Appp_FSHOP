@@ -27,7 +27,7 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     body: remoteMessage.notification?.body || 'Bạn có tin nhắn mới',
     android: {
       channelId,
-      smallIcon: 'ic_launcher', // Giữ icon của bạn
+      smallIcon: 'ic_launcher_round', // Giữ icon của bạn
       pressAction: {
         id: 'default',
         launchActivity: 'default',

@@ -49,9 +49,19 @@ const ProductCard = ({ item, navigation }: any) => {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
   };
 
+  const handleNavigate = () => {
+    // Nếu item là sản phẩm khuyến mãi (từ search), điều hướng sang màn SaleProductDetail
+    if (item.type === 'sale') {
+      navigation.navigate("SaleProductDetail", { productId: item._id });
+      return;
+    }
+    // Mặc định: sản phẩm thường
+    navigation.navigate("ProductDT", { productId: item._id });
+  };
+
   return (
     <Pressable
-      onPress={() => navigation.navigate("ProductDT", { productId: item._id })}
+      onPress={handleNavigate}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={{ flex: 1 }}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, Dimensions, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Dimensions, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons'
 import { useState } from 'react';
 import API from '../api';
@@ -17,7 +17,7 @@ const CARD_WIDTH = (width - (HORIZONTAL_PADDING * 2) - GRID_GAP) / 2;
 
 const SearchScreen = ({ navigation }: any) => {
     const [searchText, setSearchText] = useState('');
-    const [results, setResults] = useState([]);
+    const [results, setResults] = useState<any[]>([]);
     const [typingTimeout, setTypingTimeout] = useState<any>(null);
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
@@ -32,13 +32,37 @@ const SearchScreen = ({ navigation }: any) => {
             if (minPrice) params.minPrice = minPrice.replace(/\./g, '');
             if (maxPrice) params.maxPrice = maxPrice.replace(/\./g, '');
 
+            // Gọi song song: sản phẩm thường + sản phẩm khuyến mãi
+            const [normalRes, saleRes] = await Promise.all([
+                API.get('/products/search', { params }),
+                API.get('/sale-products/search', { params }),
+            ]);
 
-            const response = await API.get('/products/search', { params });
-            const normalized = (response.data || []).map((p: any) => ({
+            // API products/search: { success, count, products: [...] }
+            const normalProducts = Array.isArray(normalRes?.data?.products)
+                ? normalRes.data.products
+                : [];
+
+            // API sale-products/search: { status, data: [...] }
+            const saleProducts = Array.isArray(saleRes?.data?.data)
+                ? saleRes.data.data
+                : [];
+
+            const normalizedNormal = normalProducts.map((p: any) => ({
                 ...p,
+                type: 'normal',
                 images: p.images || (p.image ? [p.image] : []),
             }));
-            setResults(normalized);
+
+            const normalizedSale = saleProducts.map((p: any) => ({
+                ...p,
+                type: 'sale',
+                // Dùng giá đã giảm để hiển thị giống sale
+                price: p.discount_price ?? p.price,
+                images: p.images || (p.image ? [p.image] : []),
+            }));
+
+            setResults([...normalizedNormal, ...normalizedSale]);
         } catch (error) {
             console.error('Lỗi khi gọi API:', error);
         }
@@ -111,11 +135,14 @@ const SearchScreen = ({ navigation }: any) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => {
-                            if (!minPrice.trim() || !maxPrice.trim()) {
+                            // Chỉ reset nếu cả min và max đều trống.
+                            // Nếu người dùng chọn khoảng chỉ có 1 giá trị (ví dụ: "Trên 500.000đ"),
+                            // backend vẫn xử lý được khi chỉ có minPrice hoặc maxPrice.
+                            if (!minPrice.trim() && !maxPrice.trim()) {
                                 setResults([]);
-                            } else {
-                                fetchProducts(searchText);
+                                return;
                             }
+                            fetchProducts(searchText);
                         }}
                         style={styles.applyButton}
                     >

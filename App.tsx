@@ -22,14 +22,16 @@ import PrivacyPolicyScreen from "./src/screen/PrivacyPolicyScreen";
 import CheckoutScreen from "./src/screen/CheckoutScreen";
 import PersonalInfoScreen from "./src/screen/PersonalInfoScreen";
 import OrderTrackingScreen from "./src/screen/OrderTrackingScreen";
+import ReviewScreen from "./src/screen/ReviewScreen";
 import ForgotPassword from "./src/login/ForgotPassword";
 import CheckoutVNPay from './src/screen/payment/CheckoutVNPay';
 import CheckVnPayMent from './src/screen/payment/CheckVnPayMent';
 import NotificationScreen from "./src/screen/NotificationScreen";
 import SaleProductDetail from './src/screen/SaleProductDetail';
+import ChatScreen from "./src/screen/chat/ChatScreen";
 
 // ⚠️ IP CỦA BẠN
-const SOCKET_URL = 'http://192.168.1.93:3002';
+const SOCKET_URL = 'http://192.168.100.108:3002';
 const CHANNEL_ID = 'coolmate_notification_v6';
 
 const Stack = createNativeStackNavigator();
@@ -151,7 +153,7 @@ export default function App() {
         android: {
           channelId: CHANNEL_ID,
           importance: AndroidImportance.HIGH,
-          smallIcon: 'ic_launcher', // Giữ icon của bạn
+          smallIcon: 'ic_launcher_round', // Giữ icon của bạn
           pressAction: { id: 'default', launchActivity: 'default' },
           visibility: 1,
         },
@@ -220,6 +222,8 @@ export default function App() {
         <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+        <Stack.Screen name="ReviewScreen" component={ReviewScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Notification" component={NotificationScreen} />
         <Stack.Screen name="SaleProductDetail" component={SaleProductDetail} />
       </Stack.Navigator>

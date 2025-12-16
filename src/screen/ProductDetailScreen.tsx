@@ -136,7 +136,28 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
     }
   };
 
+  // Tính tổng tồn kho theo size (nếu có)
+  const totalStock =
+    product?.sizes?.reduce(
+      (sum: number, s: any) => sum + (s?.quantity || 0),
+      0,
+    ) ?? product?.stock ?? 0;
+
+  const isInactive = product?.isActive === false;
+  const isSoldOut = totalStock <= 0;
+
   const handleAddToCart = async () => {
+    // Nếu sản phẩm đã bị ẩn hoặc hết hàng thì chặn mua giống BE
+    if (isInactive) {
+      Alert.alert('Thông báo', 'Sản phẩm ngừng kinh doanh, không thể mua.');
+      return;
+    }
+
+    if (isSoldOut) {
+      Alert.alert('Thông báo', 'Sản phẩm tạm thời hết hàng.');
+      return;
+    }
+
     if (!selectedSize) {
       Alert.alert(
         'Thông báo',
@@ -297,11 +318,16 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
           <Text style={styles.productName}>{product.name}</Text>
           {/* ⭐ Tổng kho tất cả size */}
           <Text style={{ color: '#6b7280', marginBottom: 10 }}>
-            Tổng kho: {product.sizes?.reduce((sum, s) => sum + s.quantity, 0)}{' '}
-            sản phẩm
+            Tổng kho: {totalStock} sản phẩm
           </Text>
-          {product.stock === 0 && (
+          {/* Hiển thị trạng thái giống BE: ngừng kinh doanh / tạm hết hàng */}
+          {isInactive && (
             <Text style={{ color: 'red', marginBottom: 6 }}>
+              Sản phẩm ngừng kinh doanh
+            </Text>
+          )}
+          {!isInactive && isSoldOut && (
+            <Text style={{ color: 'orange', marginBottom: 6 }}>
               Sản phẩm tạm thời hết hàng
             </Text>
           )}
@@ -425,13 +451,19 @@ const ProductDetailScreen = ({ route, navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.checkoutButton,
-            product.stock === 0 && { backgroundColor: '#ccc' },
+            (isInactive || isSoldOut) && { backgroundColor: '#9ca3af' },
           ]}
-          disabled={product.stock === 0}
+          disabled={isInactive || isSoldOut}
           onPress={handleAddToCart}
         >
           <Icon name="cart" size={20} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.checkoutText}>Thêm vào giỏ</Text>
+          <Text style={styles.checkoutText}>
+            {isInactive
+              ? 'Ngừng kinh doanh'
+              : isSoldOut
+              ? 'Hết hàng'
+              : 'Thêm vào giỏ'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

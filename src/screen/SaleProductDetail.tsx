@@ -113,6 +113,25 @@ const SaleProductDetail = ({ route, navigation }: any) => {
 
   // --- TÍNH TOÁN ---
   const totalPrice = product ? (product.discount_price || 0) * quantity : 0;
+
+  // Xác định sản phẩm đã hết hàng (tất cả size đều hết hoặc không có size nào khả dụng)
+  const isSoldOut = useMemo(() => {
+    if (!product) return false;
+
+    const sizes = Array.isArray(product.sizes) ? product.sizes : [];
+
+    // Nếu có mảng sizes: hết hàng khi tất cả size quantity <= 0
+    if (sizes.length > 0) {
+      return sizes.every((s: any) => (s?.quantity || 0) <= 0);
+    }
+
+    // Nếu không có sizes: dựa trên field stock (nếu có), mặc định coi là hết
+    if (typeof product.stock === 'number') {
+      return product.stock <= 0;
+    }
+
+    return true;
+  }, [product]);
   
   const handlePrevImage = () => {
     if (!product?.images?.length) return;
@@ -160,6 +179,12 @@ const SaleProductDetail = ({ route, navigation }: any) => {
 
   // --- 3. THÊM VÀO GIỎ HÀNG ---
   const handleAddToCart = async () => {
+    // Nếu sản phẩm đã hết hàng thì chặn luôn, không yêu cầu chọn size
+    if (isSoldOut) {
+      Alert.alert('Thông báo', 'Sản phẩm đã hết hàng, không thể thêm vào giỏ hàng.');
+      return;
+    }
+
     if (!selectedSize) {
       Alert.alert('Thông báo', 'Vui lòng chọn size trước khi thêm vào giỏ hàng.');
       return;
@@ -382,8 +407,8 @@ const SaleProductDetail = ({ route, navigation }: any) => {
           <View style={styles.sectionContainer}>
               <Text style={styles.sectionLabel}>Chọn Size:</Text>
               
-              {/* Kiểm tra nếu có sizes thì hiển thị, nếu không báo hết hàng */}
-              {product.sizes && product.sizes.length > 0 ? (
+              {/* Kiểm tra nếu còn size khả dụng; nếu không thì báo hết hàng */}
+              {!isSoldOut && product.sizes && product.sizes.length > 0 ? (
                 <View style={styles.sizeRow}>
                     {product.sizes.map((s: any, index: number) => {
                         const isOutOfStock = s.quantity <= 0;
@@ -416,7 +441,7 @@ const SaleProductDetail = ({ route, navigation }: any) => {
                     })}
                 </View>
               ) : (
-                 <Text style={{color: 'red', fontStyle: 'italic'}}>Tạm thời hết các lựa chọn Size.</Text>
+                 <Text style={{color: 'red', fontStyle: 'italic'}}>Sản phẩm đã hết hàng, hiện không còn size khả dụng.</Text>
               )}
 
               {/* Hiển thị tồn kho khi chọn size */}
@@ -463,8 +488,17 @@ const SaleProductDetail = ({ route, navigation }: any) => {
             {totalPrice.toLocaleString()} ₫
           </Text>
         </View>
-        <TouchableOpacity style={styles.buyNowButton} onPress={handleAddToCart}>
-          <Text style={styles.buyNowText}>MUA NGAY</Text>
+        <TouchableOpacity
+          style={[
+            styles.buyNowButton,
+            isSoldOut && { backgroundColor: '#9ca3af' },
+          ]}
+          disabled={isSoldOut}
+          onPress={handleAddToCart}
+        >
+          <Text style={styles.buyNowText}>
+            {isSoldOut ? 'HẾT HÀNG' : 'MUA NGAY'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
