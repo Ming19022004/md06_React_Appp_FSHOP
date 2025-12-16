@@ -26,6 +26,14 @@ const ReviewScreen = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // Nếu không có sản phẩm nào cần đánh giá (vd: tất cả đã đánh giá) thì quay lại
+    if (!products || products.length === 0) {
+      Alert.alert('Thông báo', 'Tất cả sản phẩm trong đơn này đã được đánh giá.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+      return;
+    }
+
     if (products) {
       setReviews(
         products.map((p: any) => ({

@@ -65,7 +65,6 @@ interface OrderItem {
 const statusTabs = [
   { key: 'all', label: 'Tất cả' },
   { key: 'waiting', label: 'Chờ xử lý' },
-  { key: 'pending', label: 'Chờ xác nhận' },
   { key: 'confirmed', label: 'Đã xác nhận' },
   { key: 'shipped', label: 'Đang giao' },
   { key: 'delivered', label: 'Đã nhận' },
@@ -81,29 +80,32 @@ const OrderTrackingScreen = () => {
   const navigation = useNavigation<any>();
 
   // --- 1. LOGIC TÍNH TOÁN HIỂN THỊ (QUAN TRỌNG) ---
-  // Hàm này giúp hiển thị đúng giá đã giảm dù dữ liệu server có thể bị thiếu finalTotal
+  // Hàm này ưu tiên dùng đúng các field backend trả về (totalPrice, shippingFee, finalTotal, voucher)
   const calculateDisplayPrice = (item: OrderItem) => {
-    // Tổng tiền hàng (Quantity * Price)
-    const subTotal = item.items.reduce((sum, prod) => {
+    // Tổng tiền hàng (ưu tiên totalPrice từ backend, fallback tính từ items)
+    const calculatedSubTotal = item.items.reduce((sum, prod) => {
       return (
         sum + (Number(prod.price) || 0) * (Number(prod.purchaseQuantity) || 1)
       );
     }, 0);
+    const subTotal =
+      item.totalPrice !== undefined
+        ? Number(item.totalPrice)
+        : calculatedSubTotal;
 
-    // Phí ship (mặc định 30k nếu null)
+    // Phí ship: dùng đúng shippingFee từ backend, default 0 nếu không có
     const ship =
-      item.shippingFee !== undefined ? Number(item.shippingFee) : 30000;
+      item.shippingFee !== undefined ? Number(item.shippingFee) : 0;
 
-    // Giảm giá
+    // Giảm giá từ voucher (nếu có)
     const discount = item.voucher?.discountAmount
       ? Number(item.voucher.discountAmount)
       : 0;
 
-    // Tổng cuối cùng: Nếu server có finalTotal > 0 thì dùng, không thì tự tính
+    // Tổng cuối cùng: ưu tiên finalTotal từ backend; nếu không có thì tự tính
     // Logic: (Tiền hàng + Ship) - Giảm giá
     let final = Number(item.finalTotal);
 
-    // Fallback: Nếu finalTotal = 0 hoặc bằng tổng gốc (chưa trừ voucher), ta tự tính lại
     if (!final || isNaN(final)) {
       final = subTotal + ship - discount;
     }
@@ -209,7 +211,7 @@ const OrderTrackingScreen = () => {
   const renderItem = ({ item }: { item: OrderItem }) => {
     //     // Sử dụng hàm tính toán để lấy số liệu chính xác
     const { finalTotal, discount } = calculateDisplayPrice(item);
-    //check tất cả sản phẩm đã đánh giá chưa
+    // Kiểm tra xem tất cả sản phẩm trong đơn đã được đánh giá chưa
     const allReviewed = item.items.every(i => i.isReviewed === true);
     const isCancellable = ['waiting', 'pending'].includes(
       (item.status || '').toLowerCase(),
@@ -309,12 +311,14 @@ const OrderTrackingScreen = () => {
               </TouchableOpacity>
             )}
 
-            {item.status === 'delivered' && (
+            {/* Chỉ hiển thị nút Đánh giá nếu đơn đã giao và vẫn còn ít nhất 1 sản phẩm chưa đánh giá */}
+            {item.status === 'delivered' && !allReviewed && (
               <Pressable
               onPress={() =>
                 navigation.navigate('ReviewScreen', {
                   orderId: item._id,
-                  products: item.items.map((p) => {
+                  // Chỉ gửi sang những sản phẩm chưa được đánh giá
+                  products: item.items.filter(p => !p.isReviewed).map((p) => {
                     const productId = typeof p.id_product === 'string'
                       ? p.id_product
                       : (p.id_product?._id || '');
@@ -353,7 +357,7 @@ const OrderTrackingScreen = () => {
     return (
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={true} 
         visible={!!selectedOrder}
         onRequestClose={() => setSelectedOrder(null)}
       >
@@ -366,7 +370,10 @@ const OrderTrackingScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+            >
               <View style={styles.infoSection}>
                 <Text style={styles.modalLabel}>
                   Mã đơn:{' '}
@@ -639,7 +646,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -647,7 +654,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '85%',
+    maxHeight: '95%',
   },
   modalHeader: {
     flexDirection: 'row',
